@@ -1,12 +1,15 @@
 Package: abundancer
 Type: Package
-Title: What the Package Does (Title Case)
-Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Title: Determine Abundances of 12C and 14N from Protein Mass Spectra
+Version: 0.0.9000
+Authors@R: 
+    person(given = "David",
+           family = "Butcher",
+           role = c("aut", "cre"),
+           email = "drdavidbutcher@gmail.com",
+           comment = c(ORCID = "0000-0002-1268-4150"))
+Description: Determines isotopic abundances (12C and 14N) for protein mass spectrometric data.
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.1
