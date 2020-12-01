@@ -9,13 +9,15 @@ calculate_score_matrix(
   intensity,
   sequence = NULL,
   charge = 1,
-  start_12C = 0.98,
-  start_14N = 0.98,
-  abund_step = 0.001
+  start12C = 0.98,
+  start14N = 0.98,
+  abundStep = 0.001,
+  isoAbundCutoff = 5,
+  binSize = 0.05
 )
 }
 \arguments{
-\item{abund_step}{}
+\item{binSize}{}
 }
 \value{
 

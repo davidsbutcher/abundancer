@@ -8,6 +8,7 @@
 #' @param start14N
 #' @param abundStep
 #' @param isoAbundCutoff
+#' @param SNR
 #' @param binSize
 #'
 #' @return
@@ -19,14 +20,19 @@
 
 calculate_score_matrix <-
    function(
-      mz,
-      intensity,
+      mz = NULL,
+      intensity = NULL,
+      rawFileDir = NULL,
+      rawFileName = NULL,
+      scanNum = NULL,
+      mzRange = NULL,
       sequence = NULL,
       charge = 1,
       start12C = 0.98,
       start14N = 0.98,
       abundStep = 0.001,
       isoAbundCutoff = 5,
+      SNR = 10,
       binSize = 0.05
    ) {
 
@@ -55,24 +61,81 @@ calculate_score_matrix <-
          .[[1]]
 
 
-      # Peak picking ------------------------------------------------------------
+      # Extract spectrum from raw file ------------------------------------------
 
-      spectrum <-
-         new(
-            "Spectrum1",
-            mz = mz,
-            intensity = intensity,
-            centroided = FALSE
-         )
+      if (
+         !is.null(rawFileDir) &
+         !is.null(rawFileName) &
+         !is.null(scanNum) &
+         !is.null(mzRange)
+      ) {
+
+         # Get raw file path -------------------------------------------------------
+
+
+         rawFilesInDir <-
+            fs::dir_ls(
+               rawFileDir,
+               recurse = TRUE,
+               type = "file",
+               regexp = c("[.]raw$")
+            )
+
+         if (length(rawFilesInDir) == 0) {
+            stop("No .raw files found in raw file directory")
+         }
+
+         if (rawFilesInDir %>%
+             stringr::str_detect(rawFileName) %>%
+             any() == FALSE) {
+            stop("Input raw file not found in raw file directory")
+         }
+
+         rawFile <-
+            rawFilesInDir %>%
+            stringr::str_subset(rawFileName)
+
+         library(rawR)
+
+         spectrum <-
+            rawR::readSpectrum(
+               rawfile = rawFile,
+               scan = scanNum
+            )
+
+         spectrum <-
+            new(
+               "Spectrum1",
+               mz = spectrum[[1]]$mZ[spectrum[[1]]$mZ >= mzRange[[1]] & spectrum[[1]]$mZ <= mzRange[[2]]],
+               intensity = spectrum[[1]]$intensity[spectrum[[1]]$mZ >= mzRange[[1]] & spectrum[[1]]$mZ <= mzRange[[2]]],
+               centroided = FALSE
+            )
+
+      } else if (
+         !is.null(mz) &
+         !is.null(intensity)
+      ) {
+
+         spectrum <-
+            new(
+               "Spectrum1",
+               mz = mz,
+               intensity = intensity,
+               centroided = FALSE
+            )
+
+      }
+
+      # Peak picking ------------------------------------------------------------
 
       peaks <-
          MSnbase::pickPeaks(
             spectrum,
-            SNR = 10,
+            SNR = SNR,
+            method = "MAD",
             refineMz = "kNeighbors",
             k = 2
          )
-
 
       # Make chemical formula ---------------------------------------------------
 
@@ -84,6 +147,15 @@ calculate_score_matrix <-
          enviPat::mergeform(
             paste0("H", charge)
          )
+
+      # Remove C0|H0|N0|O0|P0|S0 from formula to prevent errors
+
+      if (
+         stringr::str_detect(chemform, "C0|H0|N0|O0|P0|S0") == TRUE
+      ) {
+         chemform <-
+            stringr::str_remove_all(chemform, "C0|H0|N0|O0|P0|S0")
+      }
 
 
       # Calculate matrix --------------------------------------------------------
@@ -105,7 +177,7 @@ calculate_score_matrix <-
 
          for (j in seq_along(seq(start14N, 1, by = abundStep))) {
 
-            k <- seq(start14N, 1, by = abundStep)[i]
+            k <- seq(start12C, 1, by = abundStep)[i]
 
             l <- seq(start14N, 1, by = abundStep)[j]
 
