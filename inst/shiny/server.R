@@ -23,15 +23,16 @@ shinyServer(
 
 
       # Establish params to use for shinyFiles input (local only)
+      # NO LONGER NEEDED, SHINYFILES NOT USED
 
-      volumes <- c(Home = fs::path_home(), "R Installation" = R.home(), getVolumes()())
+      # volumes <- c(Home = fs::path_home(), "R Installation" = R.home(), getVolumes()())
 
-      shinyFileChoose(
-         input = input,
-         "fileUpload",
-         session = session,
-         roots = volumes
-      )
+      # shinyFileChoose(
+      #    input = input,
+      #    "fileUpload",
+      #    session = session,
+      #    roots = volumes
+      # )
 
       # Reactives ---------------------------------------------------------------
 
