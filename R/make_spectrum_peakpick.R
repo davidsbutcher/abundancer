@@ -11,8 +11,9 @@
 
 make_spectrum_peakpick <-
    function(
-      mz,
-      intensity,
+      MSspectrum = NULL,
+      mz = NULL,
+      intensity = NULL,
       SNR = 10,
       method = "MAD",
       refineMz = "kNeighbors",
@@ -20,15 +21,29 @@ make_spectrum_peakpick <-
       binSize = 0.05
    ) {
 
-      # Peak picking ------------------------------------------------------------
+      # Extract spectrum from raw file ------------------------------------------
 
-      spectrum <-
-         new(
-            "Spectrum1",
-            mz = mz,
-            intensity = intensity,
-            centroided = FALSE
-         )
+      if (
+         !is.null(mz) &
+         !is.null(intensity)
+      ) {
+
+         spectrum <-
+            new(
+               "Spectrum1",
+               mz = mz,
+               intensity = intensity,
+               centroided = FALSE
+            )
+
+      } else if (!is.null(MSspectrum)) {
+
+         spectrum <-
+            MSspectrum
+
+      }
+
+      # Peak picking ------------------------------------------------------------
 
       peaks <-
          MSnbase::pickPeaks(
@@ -38,7 +53,6 @@ make_spectrum_peakpick <-
             refineMz = refineMz,
             k = k
          )
-
 
       # Make spectrum -----------------------------------------------------------
 

@@ -4,7 +4,7 @@
 \alias{generate_score_heatmap}
 \title{generate_score_heatmap}
 \usage{
-generate_score_heatmap(score_matrix)
+generate_score_heatmap(score_matrix, fillOption = "C")
 }
 \arguments{
 \item{score_matrix}{}

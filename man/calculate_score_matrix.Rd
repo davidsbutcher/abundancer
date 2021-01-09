@@ -5,14 +5,17 @@
 \title{calculate_score_matrix}
 \usage{
 calculate_score_matrix(
-  mz,
-  intensity,
+  MSspectrum = NULL,
+  mz = NULL,
+  intensity = NULL,
   sequence = NULL,
   charge = 1,
   start12C = 0.98,
   start14N = 0.98,
   abundStep = 0.001,
   isoAbundCutoff = 5,
+  SNR = 10,
+  compFunc = "dotproduct",
   binSize = 0.05
 )
 }

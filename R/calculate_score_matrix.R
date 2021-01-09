@@ -1,5 +1,6 @@
 #' calculate_score_matrix
 #'
+#' @param MSspectrum
 #' @param mz
 #' @param intensity
 #' @param sequence
@@ -9,7 +10,10 @@
 #' @param abundStep
 #' @param isoAbundCutoff
 #' @param SNR
+#' @param resolvingPower
+#' @param compFunc
 #' @param binSize
+#' @param hClust_height
 #'
 #' @return
 #' @export
@@ -20,12 +24,9 @@
 
 calculate_score_matrix <-
    function(
+      MSspectrum = NULL,
       mz = NULL,
       intensity = NULL,
-      rawFileDir = NULL,
-      rawFileName = NULL,
-      scanNum = NULL,
-      mzRange = NULL,
       sequence = NULL,
       charge = 1,
       start12C = 0.98,
@@ -33,8 +34,98 @@ calculate_score_matrix <-
       abundStep = 0.001,
       isoAbundCutoff = 5,
       SNR = 10,
-      binSize = 0.05
+      resolvingPower = 300000,
+      compFunc = "dotproduct",
+      binSize = 0.05,
+      hClust_height = 0.005
    ) {
+
+      # Assertions ---------
+
+      if (!is.null(MSspectrum)) {
+
+         assertthat::assert_that(
+            class(MSspectrum)[[1]] == "Spectrum1",
+            msg = "MSspectrum not an MSnbase Spectrum1 object"
+         )
+
+      }
+
+      if (!is.null(mz)) {
+
+         assertthat::assert_that(
+            is.numeric(mz),
+            msg = "mz is not a numeric vector"
+         )
+
+      }
+
+      if (!is.null(intensity)) {
+
+         assertthat::assert_that(
+            is.numeric(intensity),
+            msg = "intensity is not a numeric vector"
+         )
+
+      }
+
+      assertthat::assert_that(
+         assertthat::is.string(sequence),
+         msg = "Sequence is not a string"
+      )
+
+      assertthat::assert_that(
+         assertthat::is.count(charge),
+         msg = "Charge is not a positive integer"
+      )
+
+      assertthat::assert_that(
+         assertthat::is.number(start12C),
+         msg = "start12C is not a length 1 numeric vector"
+      )
+
+      assertthat::assert_that(
+         start12C >= 0 && start12C <= 1,
+         msg = "start12C is not in the range 0 to 1"
+      )
+
+      assertthat::assert_that(
+         assertthat::is.number(start14N),
+         msg = "start14N is not a length 1 numeric vector"
+      )
+
+      assertthat::assert_that(
+         start14N >= 0 && start14N <= 1,
+         msg = "start14N is not in the range 0 to 1"
+      )
+
+      assertthat::assert_that(
+         assertthat::is.number(abundStep),
+         msg = "abundStep is not a length 1 numeric vector"
+      )
+
+      assertthat::assert_that(
+         assertthat::is.number(isoAbundCutoff),
+         msg = "isoAbundCutoff is not a length 1 numeric vector"
+      )
+
+      assertthat::assert_that(
+         assertthat::is.number(SNR),
+         msg = "SNR is not a length 1 numeric vector"
+      )
+
+      assertthat::assert_that(
+         compFunc == "dotproduct" | compFunc == "cor" | compFunc == "scoremfa"
+      )
+
+      assertthat::assert_that(
+         assertthat::is.number(binSize),
+         msg = "binSize is not a length 1 numeric vector"
+      )
+
+
+
+      # Calculate matrix --------------------------------------------------------
 
       # Initialize progress bar
 
@@ -64,54 +155,6 @@ calculate_score_matrix <-
       # Extract spectrum from raw file ------------------------------------------
 
       if (
-         !is.null(rawFileDir) &
-         !is.null(rawFileName) &
-         !is.null(scanNum) &
-         !is.null(mzRange)
-      ) {
-
-         # Get raw file path -------------------------------------------------------
-
-
-         rawFilesInDir <-
-            fs::dir_ls(
-               rawFileDir,
-               recurse = TRUE,
-               type = "file",
-               regexp = c("[.]raw$")
-            )
-
-         if (length(rawFilesInDir) == 0) {
-            stop("No .raw files found in raw file directory")
-         }
-
-         if (rawFilesInDir %>%
-             stringr::str_detect(rawFileName) %>%
-             any() == FALSE) {
-            stop("Input raw file not found in raw file directory")
-         }
-
-         rawFile <-
-            rawFilesInDir %>%
-            stringr::str_subset(rawFileName)
-
-         library(rawR)
-
-         spectrum <-
-            rawR::readSpectrum(
-               rawfile = rawFile,
-               scan = scanNum
-            )
-
-         spectrum <-
-            new(
-               "Spectrum1",
-               mz = spectrum[[1]]$mZ[spectrum[[1]]$mZ >= mzRange[[1]] & spectrum[[1]]$mZ <= mzRange[[2]]],
-               intensity = spectrum[[1]]$intensity[spectrum[[1]]$mZ >= mzRange[[1]] & spectrum[[1]]$mZ <= mzRange[[2]]],
-               centroided = FALSE
-            )
-
-      } else if (
          !is.null(mz) &
          !is.null(intensity)
       ) {
@@ -123,6 +166,11 @@ calculate_score_matrix <-
                intensity = intensity,
                centroided = FALSE
             )
+
+      } else if (!is.null(MSspectrum)) {
+
+         spectrum <-
+            MSspectrum
 
       }
 
@@ -172,55 +220,187 @@ calculate_score_matrix <-
       rownames(iso_matrix) <-
          seq(start14N, by = abundStep)
 
+      if (compFunc == "dotproduct") {
 
-      for (i in seq_along(seq(start12C, 1, by = abundStep))) {
+         for (i in seq_along(seq(start12C, 1, by = abundStep))) {
 
-         for (j in seq_along(seq(start14N, 1, by = abundStep))) {
+            for (j in seq_along(seq(start14N, 1, by = abundStep))) {
 
-            k <- seq(start12C, 1, by = abundStep)[i]
+               k <- seq(start12C, 1, by = abundStep)[i]
 
-            l <- seq(start14N, 1, by = abundStep)[j]
+               l <- seq(start14N, 1, by = abundStep)[j]
 
-            isotopes$abundance[index_12C] <- k
+               isotopes$abundance[index_12C] <- k
 
-            isotopes$abundance[index_13C] <- 1 - k
+               isotopes$abundance[index_13C] <- 1 - k
 
-            isotopes$abundance[index_14N] <- l
+               isotopes$abundance[index_14N] <- l
 
-            isotopes$abundance[index_15N] <- 1 - l
+               isotopes$abundance[index_15N] <- 1 - l
 
-            isopat_temp <-
-               enviPat::isopattern(
-                  isotopes,
-                  chemform,
-                  charge = charge,
-                  verbose = F
-               ) %>%
-               .[[1]] %>%
-               tibble::as_tibble() %>%
-               dplyr::filter(abundance > isoAbundCutoff)
+               isopat_temp <-
+                  enviPat::isopattern(
+                     isotopes,
+                     chemform,
+                     charge = charge,
+                     verbose = F
+                  ) %>%
+                  .[[1]] %>%
+                  tibble::as_tibble() %>%
+                  dplyr::filter(abundance > isoAbundCutoff)
 
-            peaks_IsoPat <-
-               new(
-                  "Spectrum1",
-                  mz = isopat_temp$`m/z`,
-                  intensity = isopat_temp$abundance,
-                  centroided = TRUE
-               )
+               # Cluster temporary isotopic distribution
 
-            compSpec_temp <-
-               MSnbase::compareSpectra(
-                  peaks,
-                  peaks_IsoPat,
-                  fun = "dotproduct",
-                  binSize = binSize
-               )
+               isopat_cluster <-
+                  dplyr::mutate(
+                     isopat_temp,
+                     cluster =
+                        cutree(
+                           hclust(
+                              dist(
+                                 `m/z`, method = "maximum"), method = "centroid"
+                           ),
+                           h = hClust_height
+                        )
+                  ) %>%
+                  dplyr::group_by(cluster) %>%
+                  dplyr::summarise(
+                     `m/z` = mean(`m/z`),
+                     abundance = sum(abundance), # All clustered peak abundances are summed
+                     charge = mean(charge)
+                  ) %>%
+                  dplyr::filter(charge %% 1 == 0) %>% # Remove all incorrectly clustered peaks
+                  # dplyr::arrange(desc(abundance)) %>%
+                  dplyr::ungroup()
 
-            iso_matrix[j,i] <- compSpec_temp
+               peaks_IsoPat <-
+                  new(
+                     "Spectrum1",
+                     mz = isopat_cluster$`m/z`,
+                     intensity = isopat_cluster$abundance,
+                     centroided = TRUE
+                  )
+
+               compSpec_temp <-
+                  MSnbase::compareSpectra(
+                     peaks,
+                     peaks_IsoPat,
+                     fun = compFunc,
+                     binSize = binSize
+                  )
+
+               iso_matrix[j,i] <- compSpec_temp
+
+            }
+
+            p(message = paste0("Calculating matrix\n", k))
 
          }
 
-         p(message = paste0("12C abund: ", k))
+      } else if (compFunc == "scoremfa") {
+
+         for (i in seq_along(seq(start12C, 1, by = abundStep))) {
+
+            for (j in seq_along(seq(start14N, 1, by = abundStep))) {
+
+               k <- seq(start12C, 1, by = abundStep)[i]
+
+               l <- seq(start14N, 1, by = abundStep)[j]
+
+               isotopes$abundance[index_12C] <- k
+
+               isotopes$abundance[index_13C] <- 1 - k
+
+               isotopes$abundance[index_14N] <- l
+
+               isotopes$abundance[index_15N] <- 1 - l
+
+               # Create temporary isotopic distribution
+
+               isopat_temp <-
+                  enviPat::isopattern(
+                     isotopes,
+                     chemform,
+                     charge = charge,
+                     verbose = F
+                  ) %>%
+                  .[[1]] %>%
+                  tibble::as_tibble() %>%
+                  dplyr::filter(abundance > isoAbundCutoff)
+
+               # Cluster temporary isotopic distribution
+
+               isopat_cluster <-
+                  dplyr::mutate(
+                     isopat_temp,
+                     cluster =
+                        cutree(
+                           hclust(
+                              dist(
+                                 `m/z`, method = "maximum"), method = "centroid"
+                           ),
+                           h = hClust_height
+                        )
+                  ) %>%
+                  dplyr::group_by(cluster) %>%
+                  dplyr::summarise(
+                     `m/z` = mean(`m/z`),
+                     abundance = sum(abundance), # All clustered peak abundances are summed
+                     charge = mean(charge)
+                  ) %>%
+                  dplyr::filter(charge %% 1 == 0) %>% # Remove all incorrectly clustered peaks
+                  # dplyr::arrange(desc(abundance)) %>%
+                  dplyr::ungroup()
+
+               # Create experimental vectors for scoreMFA input
+
+               vexp_tbl <-
+                  tibble::tibble(
+                     `m/z` = MSnbase::mz(peaks),
+                     intensity = MSnbase::intensity(peaks)
+                  )
+                  # dplyr::arrange(desc(intensity))
+
+               vexp_mz <-
+                  dplyr::pull(vexp_tbl, `m/z`)
+
+               vexp_sn <-
+                  dplyr::pull(vexp_tbl, intensity)
+
+
+               # Create theoretical vectors for scoreMFA input, match
+               # lengths to experimental vectors
+
+               vtheo_mz <-
+                  isopat_cluster %>%
+                  dplyr::pull(`m/z`) %>%
+                  fix_vector_length(length(vexp_mz))
+
+               vtheo_sn <-
+                  isopat_cluster %>%
+                  dplyr::pull(abundance) %>%
+                  fix_vector_length(length(vexp_mz))
+
+               # Compare spectra with scoreMFA
+
+               compSpec_temp <-
+                  ScoreMFA(
+                     vexp_mz = vexp_mz,
+                     vtheo_mz = vtheo_mz,
+                     vrp = rep(resolvingPower, length(vexp_mz)),
+                     vexp_sn = vexp_sn,
+                     vtheo_sn = vtheo_sn
+                  )
+
+               iso_matrix[j,i] <- compSpec_temp
+
+            }
+
+            # Increment the progress bar
+
+            p(message = paste0("Calculating matrix\n", k))
+
+         }
 
       }
 

@@ -36,7 +36,6 @@ generate_score_heatmap <-
          dplyr::pull(`14N Abundance`) %>%
          dplyr::first()
 
-
       ggplot2::ggplot(score_matrix_melt) +
          ggplot2::geom_raster(
             ggplot2::aes(
