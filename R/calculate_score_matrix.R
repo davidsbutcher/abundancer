@@ -244,34 +244,53 @@ calculate_score_matrix <-
                      chemform,
                      charge = charge,
                      verbose = F
+                  )
+
+               # isopat_temp <-
+               #    enviPat::isopattern(
+               #       isotopes,
+               #       chemform,
+               #       charge = charge,
+               #       verbose = F
+               #    ) %>%
+               #    .[[1]] %>%
+               #    tibble::as_tibble() %>%
+               #    dplyr::filter(abundance > isoAbundCutoff)
+
+               # Cluster temporary isotopic distribution
+
+               isopat_cluster <-
+                  enviPat::envelope(
+                     isopat_temp,
+                     dmz  = "get",
+                     resolution = resolvingPower,
+                     verbose = F
                   ) %>%
                   .[[1]] %>%
                   tibble::as_tibble() %>%
                   dplyr::filter(abundance > isoAbundCutoff)
 
-               # Cluster temporary isotopic distribution
-
-               isopat_cluster <-
-                  dplyr::mutate(
-                     isopat_temp,
-                     cluster =
-                        cutree(
-                           hclust(
-                              dist(
-                                 `m/z`, method = "maximum"), method = "centroid"
-                           ),
-                           h = hClust_height
-                        )
-                  ) %>%
-                  dplyr::group_by(cluster) %>%
-                  dplyr::summarise(
-                     `m/z` = mean(`m/z`),
-                     abundance = sum(abundance), # All clustered peak abundances are summed
-                     charge = mean(charge)
-                  ) %>%
-                  dplyr::filter(charge %% 1 == 0) %>% # Remove all incorrectly clustered peaks
-                  # dplyr::arrange(desc(abundance)) %>%
-                  dplyr::ungroup()
+               # isopat_cluster <-
+               #    dplyr::mutate(
+               #       isopat_temp,
+               #       cluster =
+               #          cutree(
+               #             hclust(
+               #                dist(
+               #                   `m/z`, method = "maximum"), method = "centroid"
+               #             ),
+               #             h = hClust_height
+               #          )
+               #    ) %>%
+               #    dplyr::group_by(cluster) %>%
+               #    dplyr::summarise(
+               #       `m/z` = mean(`m/z`),
+               #       abundance = sum(abundance), # All clustered peak abundances are summed
+               #       charge = mean(charge)
+               #    ) %>%
+               #    dplyr::filter(charge %% 1 == 0) %>% # Remove all incorrectly clustered peaks
+               #    # dplyr::arrange(desc(abundance)) %>%
+               #    dplyr::ungroup()
 
                peaks_IsoPat <-
                   new(
