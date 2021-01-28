@@ -9,6 +9,7 @@ FROM rocker/shiny-verse:4.0.3
 
 RUN R -e "if (!requireNamespace('BiocManager', quietly = TRUE)) install.packages('BiocManager')"
 
+RUN R -e "BiocManager::install('mzR')"
 RUN R -e "BiocManager::install('MSnbase')"
 
 # install R packages from github
@@ -22,12 +23,13 @@ RUN R -e "devtools::install_github('davidsbutcher/abundancer')"
 RUN R -e "install.packages('magrittr', repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('assertthat', repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('glue', repos='http://cran.rstudio.com/')"
-RUN R -e "install.packages('Rcpp', repos='http://cran.rstudio.com/')"
+RUN R -e "install.packages('tippy', repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('shinydashboard', repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('shinyWidgets', repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('shinyjs', repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('readxl', repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('Peptides', repos='http://cran.rstudio.com/')"
+RUN R -e "install.packages('OrgMassSpecR', repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('fs', repos='http://cran.rstudio.com/')"
 
 # copy the app to the image

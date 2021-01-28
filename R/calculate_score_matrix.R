@@ -8,12 +8,10 @@
 #' @param start12C
 #' @param start14N
 #' @param abundStep
-#' @param isoAbundCutoff
 #' @param SNR
 #' @param resolvingPower
 #' @param compFunc
 #' @param binSize
-#' @param hClust_height
 #'
 #' @return
 #' @export
@@ -29,15 +27,16 @@ calculate_score_matrix <-
       intensity = NULL,
       sequence = NULL,
       charge = 1,
-      start12C = 0.98,
-      start14N = 0.98,
+      start12C = 0.989,
+      start14N = 0.995,
       abundStep = 0.001,
-      isoAbundCutoff = 5,
       SNR = 10,
+      method = "MAD",
+      refineMz = "kNeighbors",
+      k = 2,
       resolvingPower = 300000,
       compFunc = "dotproduct",
-      binSize = 0.05,
-      hClust_height = 0.005
+      binSize = 0.05
    ) {
 
       # Assertions ---------
@@ -104,10 +103,10 @@ calculate_score_matrix <-
          msg = "abundStep is not a length 1 numeric vector"
       )
 
-      assertthat::assert_that(
-         assertthat::is.number(isoAbundCutoff),
-         msg = "isoAbundCutoff is not a length 1 numeric vector"
-      )
+      # assertthat::assert_that(
+      #    assertthat::is.number(isoAbundCutoff),
+      #    msg = "isoAbundCutoff is not a length 1 numeric vector"
+      # )
 
       assertthat::assert_that(
          assertthat::is.number(SNR),
@@ -133,6 +132,8 @@ calculate_score_matrix <-
 
       # Get isotope indices -----------------------------------------------------
 
+      # Need to determine these so they can be replaced later
+
       data(isotopes, package = "enviPat")
 
       index_12C <-
@@ -153,6 +154,8 @@ calculate_score_matrix <-
 
 
       # Extract spectrum from raw file ------------------------------------------
+
+      # This is only run if mz and intensity vectors are not provided
 
       if (
          !is.null(mz) &
@@ -176,16 +179,20 @@ calculate_score_matrix <-
 
       # Peak picking ------------------------------------------------------------
 
-      peaks <-
+      # Peak picking for user-supplied/experimental spectrum
+
+      peaks_exp_picked <-
          MSnbase::pickPeaks(
             spectrum,
             SNR = SNR,
-            method = "MAD",
-            refineMz = "kNeighbors",
-            k = 2
+            method = method,
+            refineMz = refineMz,
+            k = k
          )
 
       # Make chemical formula ---------------------------------------------------
+
+      # For use in calculating theoretical isotopic distributions
 
       chemform <-
          OrgMassSpecR::ConvertPeptide(sequence) %>%
@@ -198,15 +205,13 @@ calculate_score_matrix <-
 
       # Remove C0|H0|N0|O0|P0|S0 from formula to prevent errors
 
-      if (
-         stringr::str_detect(chemform, "C0|H0|N0|O0|P0|S0") == TRUE
-      ) {
-         chemform <-
-            stringr::str_remove_all(chemform, "C0|H0|N0|O0|P0|S0")
-      }
+      chemform <-
+         stringr::str_remove_all(chemform, "C0|H0|N0|O0|P0|S0")
 
 
       # Calculate matrix --------------------------------------------------------
+
+      # Initialize matrix with appropriate dimensions and name rows and cols
 
       iso_matrix <-
          matrix(
@@ -220,206 +225,115 @@ calculate_score_matrix <-
       rownames(iso_matrix) <-
          seq(start14N, by = abundStep)
 
-      if (compFunc == "dotproduct") {
+      # Main loop which calculates scores. i iterates 12C abundance,
+      # j iterates 14N abundance
 
-         for (i in seq_along(seq(start12C, 1, by = abundStep))) {
+      for (i in seq_along(seq(start12C, 1, by = abundStep))) {
 
-            for (j in seq_along(seq(start14N, 1, by = abundStep))) {
+         for (j in seq_along(seq(start14N, 1, by = abundStep))) {
 
-               k <- seq(start12C, 1, by = abundStep)[i]
+            k <- seq(start12C, 1, by = abundStep)[i]
 
-               l <- seq(start14N, 1, by = abundStep)[j]
+            l <- seq(start14N, 1, by = abundStep)[j]
 
-               isotopes$abundance[index_12C] <- k
+            isotopes$abundance[index_12C] <- k
 
-               isotopes$abundance[index_13C] <- 1 - k
+            isotopes$abundance[index_13C] <- 1 - k
 
-               isotopes$abundance[index_14N] <- l
+            isotopes$abundance[index_14N] <- l
 
-               isotopes$abundance[index_15N] <- 1 - l
+            isotopes$abundance[index_15N] <- 1 - l
 
-               isopat_temp <-
-                  enviPat::isopattern(
-                     isotopes,
-                     chemform,
-                     charge = charge,
-                     verbose = F
-                  )
+            isopat_temp <-
+               enviPat::isopattern(
+                  isotopes,
+                  chemform,
+                  charge = charge,
+                  verbose = F
+               )
 
-               # isopat_temp <-
-               #    enviPat::isopattern(
-               #       isotopes,
-               #       chemform,
-               #       charge = charge,
-               #       verbose = F
-               #    ) %>%
-               #    .[[1]] %>%
-               #    tibble::as_tibble() %>%
-               #    dplyr::filter(abundance > isoAbundCutoff)
+            isopat_cluster <-
+               enviPat::envelope(
+                  isopat_temp,
+                  dmz  = "get",
+                  resolution = resolvingPower,
+                  verbose = F
+               ) %>%
+               .[[1]] %>%
+               tibble::as_tibble() %>%
+               dplyr::filter(abundance > 0)
 
-               # Cluster temporary isotopic distribution
+            peaks_IsoPat <-
+               new(
+                  "Spectrum1",
+                  mz = isopat_cluster$`m/z`,
+                  intensity = isopat_cluster$abundance,
+                  centroided = FALSE
+               )
 
-               isopat_cluster <-
-                  enviPat::envelope(
-                     isopat_temp,
-                     dmz  = "get",
-                     resolution = resolvingPower,
-                     verbose = F
-                  ) %>%
-                  .[[1]] %>%
-                  tibble::as_tibble() %>%
-                  dplyr::filter(abundance > isoAbundCutoff)
+            # use peak picking on the theoretical isotopic distribution
 
-               # isopat_cluster <-
-               #    dplyr::mutate(
-               #       isopat_temp,
-               #       cluster =
-               #          cutree(
-               #             hclust(
-               #                dist(
-               #                   `m/z`, method = "maximum"), method = "centroid"
-               #             ),
-               #             h = hClust_height
-               #          )
-               #    ) %>%
-               #    dplyr::group_by(cluster) %>%
-               #    dplyr::summarise(
-               #       `m/z` = mean(`m/z`),
-               #       abundance = sum(abundance), # All clustered peak abundances are summed
-               #       charge = mean(charge)
-               #    ) %>%
-               #    dplyr::filter(charge %% 1 == 0) %>% # Remove all incorrectly clustered peaks
-               #    # dplyr::arrange(desc(abundance)) %>%
-               #    dplyr::ungroup()
+            peaks_IsoPat_picked <-
+               MSnbase::pickPeaks(
+                  peaks_IsoPat,
+                  SNR = SNR,
+                  method = method,
+                  refineMz = refineMz,
+                  k = k
+               )
 
-               peaks_IsoPat <-
-                  new(
-                     "Spectrum1",
-                     mz = isopat_cluster$`m/z`,
-                     intensity = isopat_cluster$abundance,
-                     centroided = TRUE
-                  )
+            if (compFunc == "dotproduct") {
 
                compSpec_temp <-
                   MSnbase::compareSpectra(
-                     peaks,
-                     peaks_IsoPat,
+                     peaks_exp_picked,
+                     peaks_IsoPat_picked,
                      fun = compFunc,
                      binSize = binSize
                   )
 
                iso_matrix[j,i] <- compSpec_temp
 
-            }
+            } else if (compFunc == "scoremfa") {
 
-            p(message = paste0("Calculating matrix\n", k))
-
-         }
-
-      } else if (compFunc == "scoremfa") {
-
-         for (i in seq_along(seq(start12C, 1, by = abundStep))) {
-
-            for (j in seq_along(seq(start14N, 1, by = abundStep))) {
-
-               k <- seq(start12C, 1, by = abundStep)[i]
-
-               l <- seq(start14N, 1, by = abundStep)[j]
-
-               isotopes$abundance[index_12C] <- k
-
-               isotopes$abundance[index_13C] <- 1 - k
-
-               isotopes$abundance[index_14N] <- l
-
-               isotopes$abundance[index_15N] <- 1 - l
-
-               # Create temporary isotopic distribution
-
-               isopat_temp <-
-                  enviPat::isopattern(
-                     isotopes,
-                     chemform,
-                     charge = charge,
-                     verbose = F
-                  ) %>%
-                  .[[1]] %>%
-                  tibble::as_tibble() %>%
-                  dplyr::filter(abundance > isoAbundCutoff)
-
-               # Cluster temporary isotopic distribution
-
-               isopat_cluster <-
-                  dplyr::mutate(
-                     isopat_temp,
-                     cluster =
-                        cutree(
-                           hclust(
-                              dist(
-                                 `m/z`, method = "maximum"), method = "centroid"
-                           ),
-                           h = hClust_height
-                        )
-                  ) %>%
-                  dplyr::group_by(cluster) %>%
-                  dplyr::summarise(
-                     `m/z` = mean(`m/z`),
-                     abundance = sum(abundance), # All clustered peak abundances are summed
-                     charge = mean(charge)
-                  ) %>%
-                  dplyr::filter(charge %% 1 == 0) %>% # Remove all incorrectly clustered peaks
-                  # dplyr::arrange(desc(abundance)) %>%
-                  dplyr::ungroup()
-
-               # Create experimental vectors for scoreMFA input
-
-               vexp_tbl <-
-                  tibble::tibble(
-                     `m/z` = MSnbase::mz(peaks),
-                     intensity = MSnbase::intensity(peaks)
+               compSpec_pared <-
+                  pare_spectra(
+                     peaks_exp_picked,
+                     peaks_IsoPat_picked
                   )
-                  # dplyr::arrange(desc(intensity))
 
-               vexp_mz <-
-                  dplyr::pull(vexp_tbl, `m/z`)
+               scaling_factor <-
+                  max(
+                     MSnbase::intensity(compSpec_pared[[1]])
+                  )/
+                  max(
+                     MSnbase::intensity(compSpec_pared[[2]])
+                  )
 
-               vexp_sn <-
-                  dplyr::pull(vexp_tbl, intensity)
-
-
-               # Create theoretical vectors for scoreMFA input, match
-               # lengths to experimental vectors
-
-               vtheo_mz <-
-                  isopat_cluster %>%
-                  dplyr::pull(`m/z`) %>%
-                  fix_vector_length(length(vexp_mz))
-
-               vtheo_sn <-
-                  isopat_cluster %>%
-                  dplyr::pull(abundance) %>%
-                  fix_vector_length(length(vexp_mz))
-
-               # Compare spectra with scoreMFA
+               compSpec_pared[[2]] <-
+                  new(
+                     "Spectrum1",
+                     mz = MSnbase::mz(compSpec_pared[[2]]),
+                     intensity = MSnbase::intensity(compSpec_pared[[2]]) * scaling_factor,
+                     centroided = TRUE
+                  )
 
                compSpec_temp <-
                   ScoreMFA(
-                     vexp_mz = vexp_mz,
-                     vtheo_mz = vtheo_mz,
-                     vrp = rep(resolvingPower, length(vexp_mz)),
-                     vexp_sn = vexp_sn,
-                     vtheo_sn = vtheo_sn
+                     vexp_mz = MSnbase::mz(compSpec_pared[[1]]),
+                     vtheo_mz = MSnbase::mz(compSpec_pared[[2]]),
+                     vrp = rep(resolvingPower, length(MSnbase::mz(compSpec_pared[[1]]))),
+                     vexp_sn = MSnbase::intensity(compSpec_pared[[1]]),
+                     vtheo_sn = MSnbase::intensity(compSpec_pared[[2]])
                   )
 
                iso_matrix[j,i] <- compSpec_temp
 
             }
 
-            # Increment the progress bar
-
-            p(message = paste0("Calculating matrix\n", k))
-
          }
+
+         p(message = paste0("Calculating matrix\n", k))
 
       }
 

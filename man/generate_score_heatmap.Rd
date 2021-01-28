@@ -4,10 +4,15 @@
 \alias{generate_score_heatmap}
 \title{generate_score_heatmap}
 \usage{
-generate_score_heatmap(score_matrix, fillOption = "C")
+generate_score_heatmap(
+  score_matrix,
+  fillOption = "C",
+  scaleFillLimits = c(0, max(score_matrix)),
+  compFunc = "dotproduct"
+)
 }
 \arguments{
-\item{score_matrix}{}
+\item{compFunc}{}
 }
 \value{
 

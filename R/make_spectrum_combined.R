@@ -17,8 +17,7 @@ make_spectrum_combined <-
       score_matrix = NULL,
       sequence = NULL,
       charge = NULL,
-      isoAbundCutoff = 1,
-      hClust_height = 0.005
+      resolvingPower = 300000
    ) {
 
       # Get isotope indices -----------------------------------------------------
@@ -102,34 +101,37 @@ make_spectrum_combined <-
             chemform,
             charge = charge,
             verbose = F
-         ) %>%
-         .[[1]] %>%
-         tibble::as_tibble() %>%
-         dplyr::filter(abundance > isoAbundCutoff)
-
+         )
 
       # Cluster theoretical peaks -----------------------------------------------
 
       isopat_cluster <-
-         dplyr::mutate(
+         enviPat::envelope(
             isopat_temp,
-            cluster =
-               cutree(
-                  hclust(
-                     dist(
-                        `m/z`, method = "maximum"), method = "centroid"
-                  ),
-                  h = hClust_height
-               )
+            dmz  = "get",
+            resolution = resolvingPower,
+            verbose = F
          ) %>%
-         dplyr::group_by(cluster) %>%
-         dplyr::summarise(
-            `m/z` = mean(`m/z`),
-            abundance = sum(abundance), # All clustered peak abundances are summed
-            charge = mean(charge)
-         ) %>%
-         dplyr::filter(charge %% 1 == 0) %>% # Remove all incorrectly clustered peaks
-         dplyr::ungroup()
+         .[[1]] %>%
+         tibble::as_tibble()
+
+      peaks_IsoPat <-
+         new(
+            "Spectrum1",
+            mz = isopat_cluster$`m/z`,
+            intensity = isopat_cluster$abundance,
+            centroided = FALSE
+         )
+
+      peaks_IsoPat_picked <-
+         MSnbase::pickPeaks(
+            peaks_IsoPat,
+            SNR = SNR,
+            method = method,
+            refineMz = refineMz,
+            k = k
+         )
+
 
       # Extract spectrum from raw file ------------------------------------------
 
@@ -161,12 +163,18 @@ make_spectrum_combined <-
             intensity = MSnbase::intensity(peaks)
          )
 
-      scaling_factor <-
-         max(peaks_tibble$intensity)/max(isopat_cluster$abundance)
+      peaks_IsoPat_tibble <-
+         tibble::tibble(
+            mz = MSnbase::mz(peaks_IsoPat_picked),
+            intensity = MSnbase::intensity(peaks_IsoPat_picked)
+         )
 
-      isopat_cluster <-
-         isopat_cluster %>%
-         dplyr::mutate(scaled_abundance = abundance*scaling_factor)
+      scaling_factor <-
+         max(peaks_tibble$intensity)/max(peaks_IsoPat_tibble$intensity)
+
+      peaks_IsoPat_tibble <-
+         peaks_IsoPat_tibble %>%
+         dplyr::mutate(scaled_intensity = intensity*scaling_factor)
 
       # Make spectrum -----------------------------------------------------------
 
@@ -182,20 +190,13 @@ make_spectrum_combined <-
                ),
             ggplot2::aes(mz, intensity)
          ) +
-         # ggplot2::geom_segment(
-         #    data = isopat_cluster,
-         #    ggplot2::aes(x = `m/z`, xend = `m/z`, y = 0, yend = scaled_abundance),
-         #    color = 'red',
-         #    size = 0.5,
-         #    alpha = 0.75
-         # ) +
          ggplot2::geom_point(
-            data = isopat_cluster,
-            ggplot2::aes(x = `m/z`, y = scaled_abundance),
+            data = peaks_IsoPat_tibble,
+            ggplot2::aes(x = mz, y = scaled_intensity),
             color = 'blue',
-            size = 4,
+            size = 3,
             shape = 18,
-            alpha = 0.5
+            alpha = 0.35
          ) +
          ggplot2::geom_point(
             ggplot2::aes(x = mz, y = intensity),
@@ -211,29 +212,6 @@ make_spectrum_combined <-
             x = "m/z",
             y = "Intensity"
          )
-
-
-      # Generate spectrum -------------------------------------------------------
-
-      # ggplot2::ggplot(
-      #    isopat_cluster,
-      #    ggplot2::aes(`m/z`, abundance)
-      # ) +
-      #    ggplot2::geom_segment(
-      #       ggplot2::aes(x = `m/z`, xend = `m/z`, y = 0, yend = abundance),
-      #       color = 'red',
-      #       size = 1,
-      #       alpha = 1
-      #    ) +
-      #    ggplot2::theme_minimal() +
-      #    ggplot2::theme(
-      #       text = ggplot2::element_text(size = 16)
-      #    ) +
-      #    ggplot2::labs(
-      #       x = "m/z",
-      #       y = "Relative Abundance"
-      #    ) +
-      #    ggplot2::xlim(xrange)
 
 
    }

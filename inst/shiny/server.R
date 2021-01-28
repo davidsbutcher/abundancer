@@ -171,11 +171,13 @@ shinyServer(
                         start14N = input$scoremat_14N,
                         abundStep =
                            as.double(input$scoremat_abundStep),
-                        isoAbundCutoff =
-                           as.double(input$scoremat_isoAbundCutoff),
                         SNR = input$peakpick_SNR,
-                        compFunc = "dotproduct",
-                        binSize = input$scoremat_binSize
+                        method = "MAD",
+                        refineMz = "kNeighbors",
+                        k = input$peakpick_k,
+                        compFunc = input$scoremat_compfunc,
+                        binSize = input$scoremat_binSize,
+                        resolvingPower = input$scoremat_resolvingPower
                      )
                )
 
@@ -315,7 +317,13 @@ shinyServer(
                   {
                      generate_score_heatmap(
                         score_matrix = score_mat_reac(),
-                        fillOption = input$heatmap_fill
+                        fillOption = input$heatmap_fill,
+                        scaleFillLimits =
+                           c(
+                              0,
+                              max(score_mat_reac())
+                           ),
+                        compFunc = input$scoremat_compfunc
                      )
                   }
                )
@@ -339,8 +347,7 @@ shinyServer(
                         score_matrix = score_mat_reac(),
                         sequence = trimws(isolate(input$scoremat_sequence)),
                         charge = isolate(input$scoremat_charge),
-                        isoAbundCutoff = 1,
-                        hClust_height = 0.005
+                        resolvingPower = isolate(input$scoremat_resolvingPower)
                      )
 
                   }
@@ -350,24 +357,14 @@ shinyServer(
             output$output_html_MS <-
                renderUI(
                   {
-                     score_matrix_melt <-
-                        reshape2::melt(score_mat_reac()) %>%
-                        tibble::as_tibble()
-
-                     names(score_matrix_melt) <-
-                        c("14N Abundance", "12C Abundance", "Cosine\nSimilarity")
-
-                     optimal_12c <-
-                        score_matrix_melt %>%
-                        dplyr::arrange(desc(`Cosine\nSimilarity`)) %>%
-                        dplyr::pull(`12C Abundance`) %>%
-                        dplyr::first()
+                     optimal <-
+                        get_optimal_abundances(score_mat_reac())
 
                      optimal_14n <-
-                        score_matrix_melt %>%
-                        dplyr::arrange(desc(`Cosine\nSimilarity`)) %>%
-                        dplyr::pull(`14N Abundance`) %>%
-                        dplyr::first()
+                        optimal[[1]]
+
+                     optimal_12c <-
+                        optimal[[2]]
 
                      p(
                         strong("Filename: "), file_name(),
@@ -436,7 +433,13 @@ shinyServer(
                print(
                   generate_score_heatmap(
                      score_matrix = score_mat_reac(),
-                     fillOption = input$heatmap_fill
+                     fillOption = input$heatmap_fill,
+                     scaleFillLimits =
+                        c(
+                           0,
+                           max(score_mat_reac())
+                        ),
+                     compFunc = input$scoremat_compfunc
                   )
                )
                dev.off()
@@ -460,7 +463,13 @@ shinyServer(
                print(
                   generate_score_heatmap(
                      score_matrix = score_mat_reac(),
-                     fillOption = input$heatmap_fill
+                     fillOption = input$heatmap_fill,
+                     scaleFillLimits =
+                        c(
+                           0,
+                           max(score_mat_reac())
+                        ),
+                     compFunc = input$scoremat_compfunc
                   )
                )
                dev.off()

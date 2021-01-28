@@ -11,7 +11,12 @@ library(shinydashboard)
 library(shinyWidgets)
 library(shinyjs)
 library(purrr)
-library(rhandsontable)
+library(Peptides)
+library(OrgMassSpecR)
+library(fs)
+library(enviPat)
+library(reshape2)
+library(progressr)
 
 # options(repos = BiocManager::repositories())
 
@@ -125,7 +130,7 @@ shinyUI(
                                  tooltip =
                                     "From MSnbase documentation: \"A local maximum is considered a peak if its intensity is SNR times larger than the estimated noise.\" Noise is estimated using the MSnbase median absolute deviation method."
                               ),
-                              value = 10,
+                              value = 25,
                               min = 0,
                               max = 100,
                               step = 1
@@ -169,7 +174,7 @@ shinyUI(
                                  tooltip =
                                     "Starting value for <sup>12</sup>C abundance to use for calculating the cosine similarity score matrix. <sup>12</sup>C abundance will be incremented from this value to 1 by the abundance step."
                               ),
-                              value = 0.985,
+                              value = 0.989,
                               min = 0.9,
                               max = 0.999,
                               step = 0.001
@@ -189,7 +194,8 @@ shinyUI(
                                  theme = "light",
                                  tooltip =
                                     "Starting value for <sup>14</sup>N abundance to use for calculating the cosine similarity score matrix. <sup>14</sup>N abundance will be incremented from this value to 1 by the abundance step."
-                              ),                              value = 0.985,
+                              ),
+                              value = 0.995,
                               min = 0.9,
                               max = 0.999,
                               step = 0.001
@@ -258,6 +264,50 @@ shinyUI(
                               min = 1,
                               max = 99,
                               step = 1
+                           )
+                        ),
+                        div(
+                           style="display: inline-block;vertical-align:top; width: 150px;",
+                           numericInput(
+                              "scoremat_resolvingPower",
+                              tippy(
+                                 "Resolving power",
+                                 placement = "right",
+                                 arrow = TRUE,
+                                 allowHTML = TRUE,
+                                 animation = "scale",
+                                 duration = 250,
+                                 theme = "light",
+                                 tooltip =
+                                    "Resolving power to be used in generating theoretical isotopic distributions. See enviPat::envelope documentation for more information."
+                              ),
+                              value = 300000,
+                              min = 1000,
+                              max = 1000000,
+                              step = 1000
+                           )
+                        ),
+                        div(
+                           style="display: inline-block;vertical-align:top; width: 150px;",
+                           selectInput(
+                              "scoremat_compfunc",
+                              tippy(
+                                 "Spectrum comparison function",
+                                 placement = "right",
+                                 arrow = TRUE,
+                                 allowHTML = TRUE,
+                                 animation = "scale",
+                                 duration = 250,
+                                 theme = "light",
+                                 tooltip =
+                                    "<span style='font-size:14px;'>Function to be used for comparing observed and theoretical isotopic envelopes.</span>"
+                              ),
+                              choices =
+                                 list(
+                                    "Cosine similarity" = "dotproduct",
+                                    "ScoreMFA" = "scoremfa"
+                                 ),
+                              selected = "Cosine similarity"
                            )
                         ),
                         h5(strong("Heatmap parameters")),

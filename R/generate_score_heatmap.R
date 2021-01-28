@@ -1,6 +1,9 @@
 #' generate_score_heatmap
 #'
 #' @param score_matrix
+#' @param fillOption
+#' @param scaleFillLimits
+#' @param compFunc
 #'
 #' @return
 #' @export
@@ -10,11 +13,30 @@
 generate_score_heatmap <-
    function(
       score_matrix,
-      fillOption = "C"
+      fillOption = "C",
+      scaleFillLimits = c(0,max(score_matrix)),
+      compFunc = "dotproduct"
    ) {
 
       canonical_12c <- 0.9893
       canonical_14n <- 0.99636
+
+      if (compFunc == "dotproduct") {
+
+         compFunc_translation <-
+            "Cosine\nSimilarity"
+
+      } else if (compFunc == "scoremfa") {
+
+         compFunc_translation <-
+            "ScoreMFA"
+
+      } else {
+
+         compFunc_translation <-
+            "ERROR, CHECK COMPFUNC"
+
+      }
 
 
       score_matrix_melt <-
@@ -22,17 +44,17 @@ generate_score_heatmap <-
          tibble::as_tibble()
 
       names(score_matrix_melt) <-
-         c("14N Abundance", "12C Abundance", "Cosine\nSimilarity")
+         c("14N Abundance", "12C Abundance", "COMP_SCORE")
 
       optimal_12c <-
          score_matrix_melt %>%
-         dplyr::arrange(desc(`Cosine\nSimilarity`)) %>%
+         dplyr::arrange(desc(COMP_SCORE)) %>%
          dplyr::pull(`12C Abundance`) %>%
          dplyr::first()
 
       optimal_14n <-
          score_matrix_melt %>%
-         dplyr::arrange(desc(`Cosine\nSimilarity`)) %>%
+         dplyr::arrange(desc(COMP_SCORE)) %>%
          dplyr::pull(`14N Abundance`) %>%
          dplyr::first()
 
@@ -41,7 +63,7 @@ generate_score_heatmap <-
             ggplot2::aes(
                x = `14N Abundance`,
                y = `12C Abundance`,
-               fill = `Cosine\nSimilarity`
+               fill = COMP_SCORE
             )
          ) +
          ggplot2::annotate(
@@ -62,18 +84,19 @@ generate_score_heatmap <-
             vjust="inward",
             hjust="inward"
          ) +
-         # ggplot2::annotate(
-         #    "point",
-         #    x = canonical_14n,
-         #    y = canonical_12c,
-         #    color = "green",
-         #    shape = 9,
-         #    size = 6
-         # ) +
          ggplot2::theme_minimal() +
-         ggplot2::scale_fill_viridis_c(option = fillOption, limits = c(0,1)) +
+         ggplot2::scale_fill_viridis_c(
+            option = fillOption,
+            limits = scaleFillLimits,
+            guide =
+               "colourbar",
+               ggplot2::guide_legend(
+                  title = compFunc_translation
+               )
+         ) +
          ggplot2::theme(
             text = ggplot2::element_text(size = 16)
          )
+
 
    }

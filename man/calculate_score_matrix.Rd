@@ -10,11 +10,14 @@ calculate_score_matrix(
   intensity = NULL,
   sequence = NULL,
   charge = 1,
-  start12C = 0.98,
-  start14N = 0.98,
+  start12C = 0.989,
+  start14N = 0.995,
   abundStep = 0.001,
-  isoAbundCutoff = 5,
   SNR = 10,
+  method = "MAD",
+  refineMz = "kNeighbors",
+  k = 2,
+  resolvingPower = 3e+05,
   compFunc = "dotproduct",
   binSize = 0.05
 )

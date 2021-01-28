@@ -14,8 +14,7 @@ make_spectrum_combined(
   score_matrix = NULL,
   sequence = NULL,
   charge = NULL,
-  isoAbundCutoff = 1,
-  hClust_height = 0.005
+  resolvingPower = 3e+05
 )
 }
 \arguments{

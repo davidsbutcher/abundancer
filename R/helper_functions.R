@@ -43,19 +43,19 @@ ovlhn <- function(theo_mz, exp_mz, theo_sn, exp_sn, rp){
 ScoreMFA <-
    function(vexp_mz, vtheo_mz, vrp, vexp_sn, vtheo_sn) {
 
-   vsd <- vexp_mz / (6*vrp)
-   ntheo <- length(vtheo_mz)
-   nexp <- length(vtheo_mz)
-   if(nexp < ntheo){
-      vtheo_mz <- vtheo_mz[1:nexp]
-      vtheo_sn <- vtheo_sn[1:nexp]
-   }
-   vovlhn <- numeric(nexp)
-   for(i in 1:ntheo){
-      vovlhn[i] <- ovlhn(theo_mz=vtheo_mz[i], exp_mz=vexp_mz[i], theo_sn=vtheo_sn[i], exp_sn=vexp_sn[i], rp=vrp[i])
-   }
-   Score <- sum(vtheo_sn*vovlhn)/sum(vtheo_sn)
-   return(Score)
+      vsd <- vexp_mz / (6*vrp)
+      ntheo <- length(vtheo_mz)
+      nexp <- length(vtheo_mz)
+      if(nexp < ntheo){
+         vtheo_mz <- vtheo_mz[1:nexp]
+         vtheo_sn <- vtheo_sn[1:nexp]
+      }
+      vovlhn <- numeric(nexp)
+      for(i in 1:ntheo){
+         vovlhn[i] <- ovlhn(theo_mz=vtheo_mz[i], exp_mz=vexp_mz[i], theo_sn=vtheo_sn[i], exp_sn=vexp_sn[i], rp=vrp[i])
+      }
+      Score <- sum(vtheo_sn*vovlhn)/sum(vtheo_sn)
+      return(Score)
 
    }
 
@@ -79,5 +79,133 @@ fix_vector_length <-
       }
 
       return(vector)
+
+   }
+
+
+pare_spectra <-
+   function(
+      spectrum1,
+      spectrum2
+   ) {
+
+      # Get info about spec1
+
+      maxint_index_spec1 <-
+         which(
+            MSnbase::intensity(spectrum1) == max(MSnbase::intensity(spectrum1))
+         )
+
+      mz_maxint <-
+         MSnbase::mz(spectrum1)[maxint_index_spec1]
+
+
+      peaks_belowmax_spec1 <-
+         length(which(MSnbase::mz(spectrum1) < mz_maxint))
+
+      peaks_abovemax_spec1 <-
+         length(which(MSnbase::mz(spectrum1) > mz_maxint))
+
+
+      # Get info about spec2
+
+      maxint_index_spec2 <-
+         which(
+            MSnbase::intensity(spectrum2) == max(MSnbase::intensity(spectrum2))
+         )
+
+      mz_maxint <-
+         MSnbase::mz(spectrum2)[maxint_index_spec2]
+
+      peaks_belowmax_spec2 <-
+         length(which(MSnbase::mz(spectrum2) < mz_maxint))
+
+      peaks_abovemax_spec2 <-
+         length(which(MSnbase::mz(spectrum2) > mz_maxint))
+
+      # Choose the lower number of peaks below max as the allowed number
+
+      if (peaks_belowmax_spec1 > peaks_belowmax_spec2) {
+
+         peaks_allowed_belowmax <- peaks_belowmax_spec2
+
+      } else if (peaks_belowmax_spec1 < peaks_belowmax_spec2) {
+
+         peaks_allowed_belowmax <- peaks_belowmax_spec1
+
+      } else if (peaks_belowmax_spec1 == peaks_belowmax_spec2) {
+
+         peaks_allowed_belowmax <- peaks_belowmax_spec1
+
+      }
+
+      # Choose the lower number of peaks above max as the allowed number
+
+
+      if (peaks_abovemax_spec1 > peaks_abovemax_spec2) {
+
+         peaks_allowed_abovemax <- peaks_abovemax_spec2
+
+      } else if (peaks_abovemax_spec1 < peaks_abovemax_spec2) {
+
+         peaks_allowed_abovemax <- peaks_abovemax_spec1
+
+      } else if (peaks_abovemax_spec1 == peaks_abovemax_spec2) {
+
+         peaks_allowed_abovemax <- peaks_abovemax_spec1
+
+      }
+
+      # Get indices for allowed values for mz and intensity for both spectra
+
+      start_index_spec1 <-
+         maxint_index_spec1 - peaks_allowed_belowmax
+
+      end_index_spec1 <-
+         maxint_index_spec1 + peaks_allowed_abovemax
+
+      indices_spec1 <-
+         seq(start_index_spec1, end_index_spec1)
+
+
+      start_index_spec2 <-
+         maxint_index_spec2 - peaks_allowed_belowmax
+
+      end_index_spec2 <-
+         maxint_index_spec2 + peaks_allowed_abovemax
+
+      indices_spec2 <-
+         seq(start_index_spec2, end_index_spec2)
+
+      # Pare both spectra to the allowed numbers of peaks above and below max
+
+      new_spectrum1 <-
+         new(
+            "Spectrum1",
+            mz =
+               MSnbase::mz(spectrum1)[indices_spec1],
+            intensity =
+               MSnbase::intensity(spectrum1)[indices_spec1],
+            centroided = TRUE
+         )
+
+      new_spectrum2 <-
+         new(
+            "Spectrum1",
+            mz =
+               MSnbase::mz(spectrum2)[indices_spec2],
+            intensity =
+               MSnbase::intensity(spectrum2)[indices_spec2],
+            centroided = TRUE
+         )
+
+      # return new spectra
+
+      return(
+         list(
+            new_spectrum1,
+            new_spectrum2
+         )
+      )
 
    }

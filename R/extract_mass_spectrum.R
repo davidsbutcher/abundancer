@@ -71,10 +71,10 @@ extract_mass_spectrum <-
          rawFilesInDir %>%
          stringr::str_subset(rawFileName)
 
-      library(rawR)
+      library(rawrr)
 
       spectrum <-
-         rawR::readSpectrum(
+         rawrr::readSpectrum(
             rawfile = rawFile,
             scan = scanNum
          )
