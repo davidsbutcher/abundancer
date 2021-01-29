@@ -2,6 +2,7 @@
 #'
 #' @param score_matrix
 #' @param fillOption
+#' @param scaleFillValues
 #' @param scaleFillLimits
 #' @param compFunc
 #'
@@ -14,7 +15,8 @@ generate_score_heatmap <-
    function(
       score_matrix,
       fillOption = "C",
-      scaleFillLimits = c(0,max(score_matrix)),
+      scaleFillValues = c(0,1),
+      scaleFillLimits = c(0,signif(max(score_matrix), digits = 1)),
       compFunc = "dotproduct"
    ) {
 
@@ -37,7 +39,6 @@ generate_score_heatmap <-
             "ERROR, CHECK COMPFUNC"
 
       }
-
 
       score_matrix_melt <-
          reshape2::melt(score_matrix) %>%
@@ -87,6 +88,7 @@ generate_score_heatmap <-
          ggplot2::theme_minimal() +
          ggplot2::scale_fill_viridis_c(
             option = fillOption,
+            values = scaleFillValues,
             limits = scaleFillLimits,
             guide =
                "colourbar",

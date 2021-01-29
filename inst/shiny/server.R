@@ -157,33 +157,33 @@ shinyServer(
             }
          )
 
-      score_mat_reac <-
-         reactive(
-            {
-               progressr::withProgressShiny(
-                  score_matrix_out <-
-                     calculate_score_matrix(
-                        mz = dplyr::pull(peaklist_reactive(), 1),
-                        intensity = dplyr::pull(peaklist_reactive(), 2),
-                        sequence = trimws(input$scoremat_sequence),
-                        charge = input$scoremat_charge,
-                        start12C = input$scoremat_12C,
-                        start14N = input$scoremat_14N,
-                        abundStep =
-                           as.double(input$scoremat_abundStep),
-                        SNR = input$peakpick_SNR,
-                        method = "MAD",
-                        refineMz = "kNeighbors",
-                        k = input$peakpick_k,
-                        compFunc = input$scoremat_compfunc,
-                        binSize = input$scoremat_binSize,
-                        resolvingPower = input$scoremat_resolvingPower
-                     )
-               )
-
-               score_matrix_out
-            }
-         )
+      # score_mat_reac <-
+      #    reactive(
+      #       {
+      #          progressr::withProgressShiny(
+      #             score_matrix_out <-
+      #                calculate_score_matrix(
+      #                   mz = dplyr::pull(peaklist_reactive(), 1),
+      #                   intensity = dplyr::pull(peaklist_reactive(), 2),
+      #                   sequence = trimws(input$scoremat_sequence),
+      #                   charge = input$scoremat_charge,
+      #                   start12C = input$scoremat_12C,
+      #                   start14N = input$scoremat_14N,
+      #                   abundStep =
+      #                      as.double(input$scoremat_abundStep),
+      #                   SNR = input$peakpick_SNR,
+      #                   method = "MAD",
+      #                   refineMz = "kNeighbors",
+      #                   k = input$peakpick_k,
+      #                   compFunc = input$scoremat_compfunc,
+      #                   binSize = input$scoremat_binSize,
+      #                   resolvingPower = input$scoremat_resolvingPower
+      #                )
+      #          )
+      #
+      #          score_matrix_out
+      #       }
+      #    )
 
 
       # Listeners ---------------------------------------------------------------
@@ -312,18 +312,53 @@ shinyServer(
             output$output_plot_scoremat <- NULL
             output$output_html_MS <- NULL
 
-            output$output_plot_scoremat <-
+            progressr::withProgressShiny(
+               score_matrix_out <-
+                  calculate_score_matrix_dual(
+                     mz = dplyr::pull(peaklist_reactive(), 1),
+                     intensity = dplyr::pull(peaklist_reactive(), 2),
+                     sequence = trimws(input$scoremat_sequence),
+                     charge = input$scoremat_charge,
+                     start12C = input$scoremat_12C,
+                     start14N = input$scoremat_14N,
+                     SNR = input$peakpick_SNR,
+                     method = "MAD",
+                     refineMz = "kNeighbors",
+                     k = input$peakpick_k,
+                     compFunc = input$scoremat_compfunc,
+                     binSize = input$scoremat_binSize,
+                     resolvingPower = input$scoremat_resolvingPower
+                  )
+            )
+
+            output$output_plot_scoremat1 <-
                renderPlot(
                   {
                      generate_score_heatmap(
-                        score_matrix = score_mat_reac(),
+                        score_matrix = score_matrix_out[[1]],
                         fillOption = input$heatmap_fill,
                         scaleFillLimits =
                            c(
-                              0,
-                              max(score_mat_reac())
+                              input$heatmap_scale_coarse_start,
+                              input$heatmap_scale_coarse_end
                            ),
-                        compFunc = input$scoremat_compfunc
+                        compFunc = isolate(input$scoremat_compfunc)
+                     )
+                  }
+               )
+
+            output$output_plot_scoremat2 <-
+               renderPlot(
+                  {
+                     generate_score_heatmap(
+                        score_matrix = score_matrix_out[[2]],
+                        fillOption = input$heatmap_fill,
+                        scaleFillLimits =
+                           c(
+                              input$heatmap_scale_fine_start,
+                              input$heatmap_scale_fine_end
+                           ),
+                        compFunc = isolate(input$scoremat_compfunc)
                      )
                   }
                )
@@ -344,7 +379,7 @@ shinyServer(
                         method = "MAD",
                         refineMz = "kNeighbors",
                         k = input$peakpick_k,
-                        score_matrix = score_mat_reac(),
+                        score_matrix = score_matrix_out[[2]],
                         sequence = trimws(isolate(input$scoremat_sequence)),
                         charge = isolate(input$scoremat_charge),
                         resolvingPower = isolate(input$scoremat_resolvingPower)
@@ -358,7 +393,7 @@ shinyServer(
                renderUI(
                   {
                      optimal <-
-                        get_optimal_abundances(score_mat_reac())
+                        get_optimal_abundances(score_matrix_out[[2]])
 
                      optimal_14n <-
                         optimal[[1]]
@@ -375,13 +410,74 @@ shinyServer(
                         OrgMassSpecR::ConvertPeptide(input$scoremat_sequence) %>%
                            OrgMassSpecR::MolecularWeight(),
                         br(), br(),
-                        strong("Max cosine similarity: "), round(max(score_mat_reac()), digits = 3),
+                        strong("Max score: "),
+                        round(max(score_matrix_out[[2]]), digits = 3),
                         br(), br(),
-                        strong("14N abundance at max cos. sim.: "), optimal_14n,
+                        strong("14N abundance at max score: "), optimal_14n,
                         br(), br(),
-                        strong("12C abundance at max cos. sim.: "), optimal_12c,
+                        strong("12C abundance at max score: "), optimal_12c,
                         br()
                      )
+                  }
+               )
+
+            # Plot download handlers -------------------------------------------------------
+
+            output$downloadPDF <-
+               downloadHandler(
+                  filename = glue::glue(
+                     "{format(Sys.time(), '%Y%m%d_%H%M%S')}_abundance_plot.pdf"
+                  ),
+                  content = function(file) {
+                     cairo_pdf(
+                        filename = file,
+                        width = 8,
+                        height = 5,
+                        bg = "transparent"
+                     )
+                     print(
+                        generate_score_heatmap(
+                           score_matrix = score_matrix_out,
+                           fillOption = input$heatmap_fill,
+                           scaleFillLimits =
+                              c(
+                                 0,
+                                 max(score_matrix_out)
+                              ),
+                           compFunc = input$scoremat_compfunc
+                        )
+                     )
+                     dev.off()
+                  }
+               )
+
+            output$downloadPNG <-
+               downloadHandler(
+                  filename = glue::glue(
+                     "{format(Sys.time(), '%Y%m%d_%H%M%S')}_abundance_plot.png"
+                  ),
+                  content = function(file) {
+                     png(
+                        file = file,
+                        width = 8,
+                        height = 5,
+                        units = "in",
+                        res = 300,
+                        bg = "transparent"
+                     )
+                     print(
+                        generate_score_heatmap(
+                           score_matrix = score_matrix_out,
+                           fillOption = input$heatmap_fill,
+                           scaleFillLimits =
+                              c(
+                                 0,
+                                 max(score_matrix_out)
+                              ),
+                           compFunc = input$scoremat_compfunc
+                        )
+                     )
+                     dev.off()
                   }
                )
 
@@ -414,67 +510,6 @@ shinyServer(
          }
       )
 
-      # Plot expressions --------------------------------------------------------
-
-      # Plot download handlers -------------------------------------------------------
-
-      output$downloadPDF <-
-         downloadHandler(
-            filename = glue::glue(
-               "{format(Sys.time(), '%Y%m%d_%H%M%S')}_abundance_plot.pdf"
-            ),
-            content = function(file) {
-               cairo_pdf(
-                  filename = file,
-                  width = 8,
-                  height = 5,
-                  bg = "transparent"
-               )
-               print(
-                  generate_score_heatmap(
-                     score_matrix = score_mat_reac(),
-                     fillOption = input$heatmap_fill,
-                     scaleFillLimits =
-                        c(
-                           0,
-                           max(score_mat_reac())
-                        ),
-                     compFunc = input$scoremat_compfunc
-                  )
-               )
-               dev.off()
-            }
-         )
-
-      output$downloadPNG <-
-         downloadHandler(
-            filename = glue::glue(
-               "{format(Sys.time(), '%Y%m%d_%H%M%S')}_abundance_plot.png"
-            ),
-            content = function(file) {
-               png(
-                  file = file,
-                  width = 8,
-                  height = 5,
-                  units = "in",
-                  res = 300,
-                  bg = "transparent"
-               )
-               print(
-                  generate_score_heatmap(
-                     score_matrix = score_mat_reac(),
-                     fillOption = input$heatmap_fill,
-                     scaleFillLimits =
-                        c(
-                           0,
-                           max(score_mat_reac())
-                        ),
-                     compFunc = input$scoremat_compfunc
-                  )
-               )
-               dev.off()
-            }
-         )
 
    }
 )

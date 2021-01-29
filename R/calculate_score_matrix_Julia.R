@@ -1,4 +1,4 @@
-#' calculate_score_matrix
+#' calculate_score_matrix_Julia
 #'
 #' @param MSspectrum
 #' @param mz
@@ -20,7 +20,7 @@
 #'
 #' @examples
 
-calculate_score_matrix <-
+calculate_score_matrix_Julia <-
    function(
       MSspectrum = NULL,
       mz = NULL,
@@ -181,14 +181,20 @@ calculate_score_matrix <-
 
       # Peak picking for user-supplied/experimental spectrum
 
-      peaks_exp_picked <-
+      peaks_exp_picked_binned <-
          MSnbase::pickPeaks(
             spectrum,
             SNR = SNR,
             method = method,
             refineMz = refineMz,
             k = k
+         ) %>%
+         MSnbase::bin(
+            binSize = binSize
          )
+
+      peaks_exp_picked_binned_inten <-
+         intensity(peaks_exp_picked_binned)[intensity(peaks_exp_picked_binned) != 0]
 
       # Make chemical formula ---------------------------------------------------
 
@@ -209,41 +215,42 @@ calculate_score_matrix <-
          stringr::str_remove_all(chemform, "C0|H0|N0|O0|P0|S0")
 
 
-      # Calculate matrix --------------------------------------------------------
+      # Prepare TIDs for score matrix calc --------------------------------------
 
-      # Initialize matrix with appropriate dimensions and name rows and cols
-
-      iso_matrix <-
-         matrix(
-            ncol = length(seq(start12C, by = abundStep)),
-            nrow = length(seq(start14N, by = abundStep))
+      isopat_list <-
+         vector(
+            "list",
+            length = length(seq_along(seq(start12C, 1, by = abundStep)))
+         ) %>%
+         purrr::set_names(
+            seq(start12C, 1, by = abundStep)
+         ) %>%
+         purrr::map(
+            ~vector(
+               "list",
+               length = length(seq_along(seq(start14N, 1, by = abundStep)))
+            ) %>%
+               purrr::set_names(
+                  seq(start14N, 1, by = abundStep)
+               )
          )
 
-      colnames(iso_matrix) <-
-         seq(start12C, by = abundStep)
-
-      rownames(iso_matrix) <-
-         seq(start14N, by = abundStep)
-
-      # Main loop which calculates scores. i iterates 12C abundance,
-      # j iterates 14N abundance
 
       for (i in seq_along(seq(start12C, 1, by = abundStep))) {
 
          for (j in seq_along(seq(start14N, 1, by = abundStep))) {
 
-            k <- seq(start12C, 1, by = abundStep)[i]
-
             l <- seq(start14N, 1, by = abundStep)[j]
 
-            isotopes$abundance[index_12C] <- k
-
-            isotopes$abundance[index_13C] <- 1 - k
+            k <- seq(start12C, 1, by = abundStep)[i]
 
             isotopes$abundance[index_14N] <- l
 
             isotopes$abundance[index_15N] <- 1 - l
 
+            isotopes$abundance[index_12C] <- k
+
+            isotopes$abundance[index_13C] <- 1 - k
 
             # Calculate theoretical isotopic distribution for the current set
             # of isotopic abundances (i and j)
@@ -277,61 +284,65 @@ calculate_score_matrix <-
 
             # use peak picking on the theoretical isotopic distribution
 
-            peaks_IsoPat_picked <-
+            peaks_IsoPat_picked_binned <-
                MSnbase::pickPeaks(
                   peaks_IsoPat,
                   SNR = SNR,
                   method = method,
                   refineMz = refineMz,
                   k = k
+               ) %>%
+               MSnbase::bin(
+                  binSize = binSize
                )
+
+            peaks_IsoPat_picked_binned_inten <-
+               intensity(peaks_IsoPat_picked_binned)[intensity(peaks_IsoPat_picked_binned) != 0]
+
+
+            isopat_list[[i]][[j]] <- peaks_IsoPat_picked_binned_inten
+
+         }
+
+      }
+
+      # Calculate score matrix --------------------------------------------------------
+
+      # Initialize matrix with appropriate dimensions and name rows and cols
+
+      score_matrix <-
+         matrix(
+            ncol = length(seq(start12C, by = abundStep)),
+            nrow = length(seq(start14N, by = abundStep))
+         )
+
+      colnames(score_matrix) <-
+         seq(start12C, by = abundStep)
+
+      rownames(score_matrix) <-
+         seq(start14N, by = abundStep)
+
+
+      # Main loop which calculates scores. i iterates 12C abundance,
+      # j iterates 14N abundance. THIS SHOULD BE IMPLEMENTED ENTIRELY IN JULIA
+
+      for (i in seq_along(seq(start12C, 1, by = abundStep))) {
+
+         for (j in seq_along(seq(start14N, 1, by = abundStep))) {
 
             if (compFunc == "dotproduct") {
 
                compSpec_temp <-
-                  MSnbase::compareSpectra(
-                     peaks_exp_picked,
-                     peaks_IsoPat_picked,
-                     fun = compFunc,
-                     binSize = binSize
+                  dotproduct(
+                     isopat_list[[i]][[j]],
+                     peaks_exp_picked_binned_inten
                   )
 
-               iso_matrix[j,i] <- compSpec_temp
+               score_matrix[j,i] <- compSpec_temp
 
             } else if (compFunc == "scoremfa") {
 
-               compSpec_pared <-
-                  pare_spectra(
-                     peaks_exp_picked,
-                     peaks_IsoPat_picked
-                  )
-
-               scaling_factor <-
-                  max(
-                     MSnbase::intensity(compSpec_pared[[1]])
-                  )/
-                  max(
-                     MSnbase::intensity(compSpec_pared[[2]])
-                  )
-
-               compSpec_pared[[2]] <-
-                  new(
-                     "Spectrum1",
-                     mz = MSnbase::mz(compSpec_pared[[2]]),
-                     intensity = MSnbase::intensity(compSpec_pared[[2]]) * scaling_factor,
-                     centroided = TRUE
-                  )
-
-               compSpec_temp <-
-                  ScoreMFA(
-                     vexp_mz = MSnbase::mz(compSpec_pared[[1]]),
-                     vtheo_mz = MSnbase::mz(compSpec_pared[[2]]),
-                     vrp = rep(resolvingPower, length(MSnbase::mz(compSpec_pared[[1]]))),
-                     vexp_sn = MSnbase::intensity(compSpec_pared[[1]]),
-                     vtheo_sn = MSnbase::intensity(compSpec_pared[[2]])
-                  )
-
-               iso_matrix[j,i] <- compSpec_temp
+               stop("This isn't implemented yet. Stop it")
 
             }
 
@@ -341,6 +352,6 @@ calculate_score_matrix <-
 
       }
 
-      return(iso_matrix)
+      return(score_matrix)
 
    }

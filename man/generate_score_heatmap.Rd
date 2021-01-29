@@ -7,7 +7,8 @@
 generate_score_heatmap(
   score_matrix,
   fillOption = "C",
-  scaleFillLimits = c(0, max(score_matrix)),
+  scaleFillValues = c(0, 1),
+  scaleFillLimits = c(0, signif(max(score_matrix), digits = 1)),
   compFunc = "dotproduct"
 )
 }

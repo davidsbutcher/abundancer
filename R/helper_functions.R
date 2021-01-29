@@ -209,3 +209,19 @@ pare_spectra <-
       )
 
    }
+
+dotproduct <- function(x, y) {
+   #Taken from MSnbase package, 20210127
+   maxlength <-
+      min(
+         c(length(x), length(y))
+      )
+
+   x <- x[1:maxlength]
+   y <- y[1:maxlength]
+
+   as.vector(x %*% y) / (sqrt(sum(x*x)) * sqrt(sum(y*y)))
+}
+
+ceiling_dec <- function(x, digits=1) round(x + 5*10^(-digits-1), digits)
+

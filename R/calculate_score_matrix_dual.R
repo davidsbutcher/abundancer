@@ -1,4 +1,4 @@
-#' calculate_score_matrix
+#' calculate_score_matrix_dual
 #'
 #' @param MSspectrum
 #' @param mz
@@ -7,7 +7,6 @@
 #' @param charge
 #' @param start12C
 #' @param start14N
-#' @param abundStep
 #' @param SNR
 #' @param resolvingPower
 #' @param compFunc
@@ -20,7 +19,7 @@
 #'
 #' @examples
 
-calculate_score_matrix <-
+calculate_score_matrix_dual <-
    function(
       MSspectrum = NULL,
       mz = NULL,
@@ -29,7 +28,6 @@ calculate_score_matrix <-
       charge = 1,
       start12C = 0.989,
       start14N = 0.995,
-      abundStep = 0.001,
       SNR = 10,
       method = "MAD",
       refineMz = "kNeighbors",
@@ -98,10 +96,10 @@ calculate_score_matrix <-
          msg = "start14N is not in the range 0 to 1"
       )
 
-      assertthat::assert_that(
-         assertthat::is.number(abundStep),
-         msg = "abundStep is not a length 1 numeric vector"
-      )
+      # assertthat::assert_that(
+      #    assertthat::is.number(abundStep),
+      #    msg = "abundStep is not a length 1 numeric vector"
+      # )
 
       # assertthat::assert_that(
       #    assertthat::is.number(isoAbundCutoff),
@@ -124,11 +122,11 @@ calculate_score_matrix <-
 
 
 
-      # Calculate matrix --------------------------------------------------------
+      # Initialize parameters ---------------------------------------------------
 
-      # Initialize progress bar
+      # Establish abundance steps for the coarse and fine matrices
 
-      p <- progressr::progressor(along = seq(start12C, 1, by = abundStep))
+      abundStepCoarse <- 0.001
 
       # Get isotope indices -----------------------------------------------------
 
@@ -209,32 +207,36 @@ calculate_score_matrix <-
          stringr::str_remove_all(chemform, "C0|H0|N0|O0|P0|S0")
 
 
-      # Calculate matrix --------------------------------------------------------
+      # Calculate coarse matrix --------------------------------------------------------
+
+      # Initialize progress bar
+
+      p <- progressr::progressor(steps = 100)
 
       # Initialize matrix with appropriate dimensions and name rows and cols
 
-      iso_matrix <-
+      iso_matrix_coarse <-
          matrix(
-            ncol = length(seq(start12C, by = abundStep)),
-            nrow = length(seq(start14N, by = abundStep))
+            ncol = length(seq(start12C, by = abundStepCoarse)),
+            nrow = length(seq(start14N, by = abundStepCoarse))
          )
 
-      colnames(iso_matrix) <-
-         seq(start12C, by = abundStep)
+      colnames(iso_matrix_coarse) <-
+         seq(start12C, by = abundStepCoarse)
 
-      rownames(iso_matrix) <-
-         seq(start14N, by = abundStep)
+      rownames(iso_matrix_coarse) <-
+         seq(start14N, by = abundStepCoarse)
 
-      # Main loop which calculates scores. i iterates 12C abundance,
-      # j iterates 14N abundance
+      # Main loop which calculates scores for COARSE matrix.
+      # i iterates 12C abundance, j iterates 14N abundance
 
-      for (i in seq_along(seq(start12C, 1, by = abundStep))) {
+      for (i in seq_along(seq(start12C, 1, by = abundStepCoarse))) {
 
-         for (j in seq_along(seq(start14N, 1, by = abundStep))) {
+         for (j in seq_along(seq(start14N, 1, by = abundStepCoarse))) {
 
-            k <- seq(start12C, 1, by = abundStep)[i]
+            k <- seq(start12C, 1, by = abundStepCoarse)[i]
 
-            l <- seq(start14N, 1, by = abundStep)[j]
+            l <- seq(start14N, 1, by = abundStepCoarse)[j]
 
             isotopes$abundance[index_12C] <- k
 
@@ -296,7 +298,7 @@ calculate_score_matrix <-
                      binSize = binSize
                   )
 
-               iso_matrix[j,i] <- compSpec_temp
+               iso_matrix_coarse[j,i] <- compSpec_temp
 
             } else if (compFunc == "scoremfa") {
 
@@ -331,16 +333,189 @@ calculate_score_matrix <-
                      vtheo_sn = MSnbase::intensity(compSpec_pared[[2]])
                   )
 
-               iso_matrix[j,i] <- compSpec_temp
+               iso_matrix_coarse[j,i] <- compSpec_temp
 
             }
 
          }
 
-         p(message = paste0("Calculating matrix\n", k))
+         p(
+            50/length(seq(start12C, 1, by = abundStepCoarse)),
+            message = paste0("Calculating coarse matrix")
+         )
 
       }
 
-      return(iso_matrix)
+
+      # Get/set parameters for fine matrix ------------------------------------------
+
+      abundStepFine <- 0.0001
+
+      optimal_abund <-
+         get_optimal_abundances(iso_matrix_coarse)
+
+      start14Nfine <-
+         optimal_abund[[1]] - abundStepCoarse/2
+
+      # if (start14Nfine == 1) start14Nfine <- 1 - abundStepCoarse
+
+      end14Nfine <-
+         optimal_abund[[1]] + abundStepCoarse/2
+
+      if (end14Nfine > 1) end14Nfine <- 1
+
+      start12Cfine <-
+         optimal_abund[[2]] - abundStepCoarse/2
+
+      # if (start12Cfine == 1) start12Cfine <- 1 - abundStepCoarse
+
+      end12Cfine <-
+         optimal_abund[[2]] + abundStepCoarse/2
+
+      if (end12Cfine > 1) end12Cfine <- 1
+
+      # Calculate fine matrix --------------------------------------------------------
+
+      # q <- progressr::progressor(along = seq(start12Cfine, end12Cfine, by = abundStepFine))
+
+      # Initialize matrix with appropriate dimensions and name rows and cols
+
+      iso_matrix_fine <-
+         matrix(
+            ncol = length(seq(start12Cfine, end12Cfine, by = abundStepFine)),
+            nrow = length(seq(start14Nfine, end14Nfine, by = abundStepFine))
+         )
+
+      colnames(iso_matrix_fine) <-
+         seq(start12Cfine, end12Cfine, by = abundStepFine)
+
+      rownames(iso_matrix_fine) <-
+         seq(start14Nfine, end14Nfine, by = abundStepFine)
+
+      # Main loop which calculates scores for COARSE matrix.
+      # i iterates 12C abundance, j iterates 14N abundance
+
+      for (i in seq_along(seq(start12Cfine, end12Cfine, by = abundStepFine))) {
+
+         for (j in seq_along(seq(start14Nfine, end14Nfine, by = abundStepFine))) {
+
+            k <- seq(start12Cfine, end12Cfine, by = abundStepFine)[i]
+
+            l <- seq(start14Nfine, end14Nfine, by = abundStepFine)[j]
+
+            isotopes$abundance[index_12C] <- k
+
+            isotopes$abundance[index_13C] <- 1 - k
+
+            isotopes$abundance[index_14N] <- l
+
+            isotopes$abundance[index_15N] <- 1 - l
+
+
+            # Calculate theoretical isotopic distribution for the current set
+            # of isotopic abundances (i and j)
+
+            isopat_temp <-
+               enviPat::isopattern(
+                  isotopes,
+                  chemform,
+                  charge = charge,
+                  verbose = F
+               )
+
+            isopat_cluster <-
+               enviPat::envelope(
+                  isopat_temp,
+                  dmz  = "get",
+                  resolution = resolvingPower,
+                  verbose = F
+               ) %>%
+               .[[1]] %>%
+               tibble::as_tibble() %>%
+               dplyr::filter(abundance > 0)
+
+            peaks_IsoPat <-
+               new(
+                  "Spectrum1",
+                  mz = isopat_cluster$`m/z`,
+                  intensity = isopat_cluster$abundance,
+                  centroided = FALSE
+               )
+
+            # use peak picking on the theoretical isotopic distribution
+
+            peaks_IsoPat_picked <-
+               MSnbase::pickPeaks(
+                  peaks_IsoPat,
+                  SNR = SNR,
+                  method = method,
+                  refineMz = refineMz,
+                  k = k
+               )
+
+            if (compFunc == "dotproduct") {
+
+               compSpec_temp <-
+                  MSnbase::compareSpectra(
+                     peaks_exp_picked,
+                     peaks_IsoPat_picked,
+                     fun = compFunc,
+                     binSize = binSize
+                  )
+
+               iso_matrix_fine[j,i] <- compSpec_temp
+
+            } else if (compFunc == "scoremfa") {
+
+               compSpec_pared <-
+                  pare_spectra(
+                     peaks_exp_picked,
+                     peaks_IsoPat_picked
+                  )
+
+               scaling_factor <-
+                  max(
+                     MSnbase::intensity(compSpec_pared[[1]])
+                  )/
+                  max(
+                     MSnbase::intensity(compSpec_pared[[2]])
+                  )
+
+               compSpec_pared[[2]] <-
+                  new(
+                     "Spectrum1",
+                     mz = MSnbase::mz(compSpec_pared[[2]]),
+                     intensity = MSnbase::intensity(compSpec_pared[[2]]) * scaling_factor,
+                     centroided = TRUE
+                  )
+
+               compSpec_temp <-
+                  ScoreMFA(
+                     vexp_mz = MSnbase::mz(compSpec_pared[[1]]),
+                     vtheo_mz = MSnbase::mz(compSpec_pared[[2]]),
+                     vrp = rep(resolvingPower, length(MSnbase::mz(compSpec_pared[[1]]))),
+                     vexp_sn = MSnbase::intensity(compSpec_pared[[1]]),
+                     vtheo_sn = MSnbase::intensity(compSpec_pared[[2]])
+                  )
+
+               iso_matrix_fine[j,i] <- compSpec_temp
+
+            }
+
+         }
+
+         p(
+            50/length(seq(start12Cfine, end12Cfine, by = abundStepFine)),
+            message = paste0("Calculating fine matrix")
+         )
+
+      }
+
+      return(
+         list(
+            iso_matrix_coarse,
+            iso_matrix_fine
+         )
+      )
 
    }

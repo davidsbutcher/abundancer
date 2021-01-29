@@ -42,24 +42,33 @@ make_spectrum_combined <-
 
       # Get optimal abundances --------------------------------------------------
 
-      score_matrix_melt <-
-         reshape2::melt(score_matrix) %>%
-         tibble::as_tibble()
-
-      names(score_matrix_melt) <-
-         c("14N Abundance", "12C Abundance", "Cosine\nSimilarity")
-
-      optimal_12c <-
-         score_matrix_melt %>%
-         dplyr::arrange(desc(`Cosine\nSimilarity`)) %>%
-         dplyr::pull(`12C Abundance`) %>%
-         dplyr::first()
+      optimal_abund <-
+         get_optimal_abundances(score_matrix)
 
       optimal_14n <-
-         score_matrix_melt %>%
-         dplyr::arrange(desc(`Cosine\nSimilarity`)) %>%
-         dplyr::pull(`14N Abundance`) %>%
-         dplyr::first()
+         optimal_abund[[1]]
+
+      optimal_12c <-
+         optimal_abund[[2]]
+
+      # score_matrix_melt <-
+      #    reshape2::melt(score_matrix) %>%
+      #    tibble::as_tibble()
+      #
+      # names(score_matrix_melt) <-
+      #    c("14N Abundance", "12C Abundance", "Cosine\nSimilarity")
+      #
+      # optimal_12c <-
+      #    score_matrix_melt %>%
+      #    dplyr::arrange(desc(`Cosine\nSimilarity`)) %>%
+      #    dplyr::pull(`12C Abundance`) %>%
+      #    dplyr::first()
+      #
+      # optimal_14n <-
+      #    score_matrix_melt %>%
+      #    dplyr::arrange(desc(`Cosine\nSimilarity`)) %>%
+      #    dplyr::pull(`14N Abundance`) %>%
+      #    dplyr::first()
 
       # Replace standard abundances with optimal values --------------------------
 
