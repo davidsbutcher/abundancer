@@ -22,9 +22,6 @@ library(progressr)
 
 options(shiny.maxRequestSize = 1000*1024^2)
 
-# Hidden tabs -------------------------------------------------------------
-
-
 
 # UI ----------------------------------------------------------------------
 
@@ -33,6 +30,7 @@ shinyUI(
    fixedPage(
       titlePanel("abundancer"),
       theme = "maglab_theme_old.css",
+      # theme = bslib::bs_theme(version = 4),
 
       useShinyjs(),
 
@@ -64,22 +62,42 @@ shinyUI(
                id = "mainpanel",
                type = "pills",
                tabPanel(
-                  "Analyze",
+                  "Main",
                   hr(),
                   tabsetPanel(
                      id = "guppipanel",
                      type = "tabs",
                      tabPanel(
-                        "Upload File",
+                        "Peaklist",
                         br(),
                         fileInput(
                            "fileInputUpload",
-                           "Select a CSV or XLSX file",
+                           tippy(
+                              "Upload peaklist",
+                              placement = "right",
+                              arrow = TRUE,
+                              allowHTML = TRUE,
+                              animation = "scale",
+                              duration = 250,
+                              theme = "light-border",
+                              tooltip =
+                                 "<span style='font-size:14px;'>Upload a peaklist in CSV or XLSX format. The first column should contain m/z values and the second should contain intensities. The peaklist should contain a full isotopic distribution of a single charge state of a single protein.</span>"
+                           ),
                            accept = c(".xlsx", ".csv")
                         ),
                         numericInput(
                            "scoremat_charge",
-                           "Charge",
+                           tippy(
+                              "Charge",
+                              placement = "right",
+                              arrow = TRUE,
+                              allowHTML = TRUE,
+                              animation = "scale",
+                              duration = 250,
+                              theme = "light-border",
+                              tooltip =
+                                 "<span style='font-size:14px;'>Charge state corresponding to the isotopic distribution in the peaklist. Only positive charges are supported.</span>"
+                           ),
                            value = 1,
                            min = 1,
                            max = 100,
@@ -87,14 +105,34 @@ shinyUI(
                         ),
                         textAreaInput(
                            "scoremat_sequence",
-                           "Sequence",
+                           tippy(
+                              "Sequence",
+                              placement = "right",
+                              arrow = TRUE,
+                              allowHTML = TRUE,
+                              animation = "scale",
+                              duration = 250,
+                              theme = "light-border",
+                              tooltip =
+                                 "<span style='font-size:14px;'>Sequence corresponding to the protein whose isotopic distribution is represented by the peaklist. Only single-letter codes of canonical amino acids are supported.</span>"
+                           ),
                            placeholder =
                               "Single letter canonical amino acids only",
                            height = "100px"
                         ),
                         textInput(
                            "scoremat_PTM",
-                           "PTM chemical formula",
+                           tippy(
+                              "PTM formula",
+                              placement = "right",
+                              arrow = TRUE,
+                              allowHTML = TRUE,
+                              animation = "scale",
+                              duration = 250,
+                              theme = "light-border",
+                              tooltip =
+                                 "<span style='font-size:14px;'>Chemical formula (in Hill notation) of post-translational modifications to the protein sequence. The formula should be provided as a delta compared to the protein's chemical formula, i.e. for a methylation the PTM formula is CH3 and not CH4. For multiple PTMs, all formulae should be combined.</span>"
+                           ),
                            placeholder = "Leave blank if unmodified"
                         ),
                         br(),
@@ -105,324 +143,286 @@ shinyUI(
                         ),
                         br(),
                         br(),
-                        splitLayout(
-                           downloadButton("downloadPDF", label = "Heatmap PDF"),
-                           downloadButton("downloadPNG", label = "Heatmap PNG")
-                        )
+                        downloadButton("downloadPDFcoarse", label = "Coarse Heatmap"),
+                        downloadButton("downloadPDFfine", label = "Fine Heatmap")
                      ),
                      tabPanel(
                         "Settings",
-                        h5(em("Hover parameter names for more info")),
-                        h5(strong("Peak picking parameters")),
-                        hr(),
-                        div(
-                           style="display: inline-block;vertical-align:top; width: 125px;",
-                           numericInput(
-                              "peakpick_SNR",
-                              tippy(
-                                 "SNR",
-                                 placement = "right",
-                                 arrow = TRUE,
-                                 allowHTML = TRUE,
-                                 animation = "scale",
-                                 duration = 250,
-                                 theme = "light",
-                                 tooltip =
-                                    "<span style='font-size:14px;'>From MSnbase documentation: \"A local maximum is considered a peak if its intensity is SNR times larger than the estimated noise.\" Noise is estimated using the MSnbase median absolute deviation method.</span>"
-                              ),
-                              value = 25,
-                              min = 0,
-                              max = 100,
-                              step = 1
-                           )
-                        ),
-                        div(
-                           style="display: inline-block;vertical-align:top; width: 150px;",
-                           numericInput(
-                              "peakpick_k",
-                              tippy(
-                                 "KNN",
-                                 placement = "right",
-                                 arrow = TRUE,
-                                 allowHTML = TRUE,
-                                 animation = "scale",
-                                 duration = 250,
-                                 theme = "light",
-                                 tooltip =
-                                    "<span style='font-size:14px;'>From MSnbase documentation: \"m/z values and intensities of the 2 * KNN closest signals to the centroid are used in the intensity weighted average calculation.\"</span>"
-                              ),
-                              value = 2,
-                              min = 1,
-                              max = 10,
-                              step = 1
-                           )
-                        ),
-                        h5(strong("Score matrix parameters")),
-                        hr(),
-                        div(
-                           style="display: inline-block;vertical-align:top; width: 150px;",
-                           numericInput(
-                              "scoremat_12C",
-                              tippy(
-                                 "<sup>12</sup>C abundance start",
-                                 placement = "right",
-                                 arrow = TRUE,
-                                 allowHTML = TRUE,
-                                 animation = "scale",
-                                 duration = 250,
-                                 theme = "light",
-                                 tooltip =
-                                    "<span style='font-size:14px;'>Starting value for <sup>12</sup>C abundance to use for calculating the coarse score matrix. <sup>12</sup>C abundance will be incremented from this value to 1 by the abundance step.</span>"
-                              ),
-                              value = 0.987,
-                              min = 0.9,
-                              max = 0.999,
-                              step = 0.001
-                           )
-                        ),
-                        div(
-                           style="display: inline-block;vertical-align:top; width: 150px;",
-                           numericInput(
-                              "scoremat_14N",
-                              tippy(
-                                 "<sup>14</sup>N abundance start",
-                                 placement = "right",
-                                 arrow = TRUE,
-                                 allowHTML = TRUE,
-                                 animation = "scale",
-                                 duration = 250,
-                                 theme = "light",
-                                 tooltip =
-                                    "<span style='font-size:14px;'>Starting value for <sup>14</sup>N abundance to use for calculating the coarse score matrix. <sup>14</sup>N abundance will be incremented from this value to 1 by the abundance step.</span>"
-                              ),
-                              value = 0.994,
-                              min = 0.9,
-                              max = 0.999,
-                              step = 0.001
-                           )
-                        ),
-                        # div(
-                        #    style="display: inline-block;vertical-align:top; width: 150px;",
-                        #    selectInput(
-                        #       "scoremat_abundStep",
-                        #       tippy(
-                        #          "Abundance step",
-                        #          placement = "right",
-                        #          arrow = TRUE,
-                        #          allowHTML = TRUE,
-                        #          animation = "scale",
-                        #          duration = 250,
-                        #          theme = "light",
-                        #          tooltip =
-                        #             "Value by which the <sup>12</sup>C and <sup>14</sup>N abundance starts will be stepped during calculation of the cosine similarity score matrix. A smaller value will yield longer calculation times."
-                        #       ),
-                        #       choices =
-                        #          c(
-                        #             0.001,
-                        #             0.0001
-                        #          ),
-                        #       selected = 0.001
-                        #    )
-                        # ),
-                        div(
-                           style="display: inline-block;vertical-align:top; width: 150px;",
-                           numericInput(
-                              "scoremat_binSize",
-                              tippy(
-                                 "Bin size",
-                                 placement = "right",
-                                 arrow = TRUE,
-                                 allowHTML = TRUE,
-                                 animation = "scale",
-                                 duration = 250,
-                                 theme = "light",
-                                 tooltip =
-                                    "<span style='font-size:14px;'>Prior to comparing observed and theoretical spectra, spectra are binned using this bin size value. See MSnbase documentation for more information.</span>"
-                              ),
-                              value = 0.05,
-                              min = 0.01,
-                              max = 0.1,
-                              step = 0.01
-                           )
-                        ),
-                        # div(
-                        #    style="display: inline-block;vertical-align:top; width: 150px;",
-                        #    numericInput(
-                        #       "scoremat_isoAbundCutoff",
-                        #       tippy(
-                        #          "Isotopic abundance cutoff",
-                        #          placement = "right",
-                        #          arrow = TRUE,
-                        #          allowHTML = TRUE,
-                        #          animation = "scale",
-                        #          duration = 250,
-                        #          theme = "light",
-                        #          tooltip =
-                        #             "During generation of theoretical spectra, theoretical isotopologues whose relative abundance are lower than this value will be removed and not used for spectral comparison."
-                        #       ),
-                        #       value = 5,
-                        #       min = 1,
-                        #       max = 99,
-                        #       step = 1
-                        #    )
-                        # ),
-                        div(
-                           style="display: inline-block;vertical-align:top; width: 150px;",
-                           numericInput(
-                              "scoremat_resolvingPower",
-                              tippy(
-                                 "Resolving power",
-                                 placement = "right",
-                                 arrow = TRUE,
-                                 allowHTML = TRUE,
-                                 animation = "scale",
-                                 duration = 250,
-                                 theme = "light",
-                                 tooltip =
-                                    "<span style='font-size:14px;'>Resolving power to be used in generating theoretical isotopic distributions. See enviPat::envelope documentation for more information.</span>"
-                              ),
-                              value = 300000,
-                              min = 1000,
-                              max = 1000000,
-                              step = 1000
-                           )
-                        ),
-                        div(
-                           style="display: inline-block;vertical-align:top; width: 150px;",
-                           selectInput(
-                              "scoremat_compfunc",
-                              tippy(
-                                 "Spectrum comparison function",
-                                 placement = "right",
-                                 arrow = TRUE,
-                                 allowHTML = TRUE,
-                                 animation = "scale",
-                                 duration = 250,
-                                 theme = "light",
-                                 tooltip =
-                                    "<span style='font-size:14px;'>Function to be used for comparing observed and theoretical isotopic envelopes.</span>"
-                              ),
-                              choices =
-                                 list(
-                                    "Cosine similarity" = "dotproduct",
-                                    "ScoreMFA" = "scoremfa"
+                        # h5(em("Hover parameter names for more info")),
+
+                        bsCollapse(
+
+                           bsCollapsePanel(
+
+                              h5(strong("Peak picking parameters")),
+                              br(),
+                              splitLayout(
+                                 numericInput(
+                                    "peakpick_SNR",
+                                    tippy(
+                                       "SNR",
+                                       placement = "right",
+                                       arrow = TRUE,
+                                       allowHTML = TRUE,
+                                       animation = "scale",
+                                       duration = 250,
+                                       theme = "light-border",
+                                       tooltip =
+                                          "<span style='font-size:14px;'>From MSnbase documentation: \"A local maximum is considered a peak if its intensity is SNR times larger than the estimated noise.\" Noise is estimated using the MSnbase median absolute deviation method.</span>"
+                                    ),
+                                    value = 25,
+                                    min = 0,
+                                    max = 100,
+                                    step = 1
                                  ),
-                              selected = "Cosine similarity"
-                           )
-                        ),
-                        h5(strong("Heatmap parameters")),
-                        hr(),
-                        div(
-                           style="display: inline-block;vertical-align:top; width: 150px;",
-                           selectInput(
-                              "heatmap_fill",
-                              tippy(
-                                 "Heatmap fill",
-                                 placement = "right",
-                                 arrow = TRUE,
-                                 allowHTML = TRUE,
-                                 animation = "scale",
-                                 duration = 250,
-                                 theme = "light",
-                                 tooltip =
-                                    "<span style='font-size:14px;'>Color palette to use for score matrix heatmap. All palettes are from the viridis R package and are accessible to colorblind readers.</span>"
+                                 numericInput(
+                                    "peakpick_k",
+                                    tippy(
+                                       "KNN",
+                                       placement = "right",
+                                       arrow = TRUE,
+                                       allowHTML = TRUE,
+                                       animation = "scale",
+                                       duration = 250,
+                                       theme = "light-border",
+                                       tooltip =
+                                          "<span style='font-size:14px;'>From MSnbase documentation: \"m/z values and intensities of the 2 * KNN closest signals to the centroid are used in the intensity weighted average calculation.\"</span>"
+                                    ),
+                                    value = 2,
+                                    min = 1,
+                                    max = 10,
+                                    step = 1
+                                 )
                               ),
-                              choices =
-                                 c(
-                                    "magma",
-                                    "inferno",
-                                    "plasma",
-                                    "viridis",
-                                    "cividis"
+                              br()
+                           ),
+
+                           bsCollapsePanel(
+
+                              h5(strong("Score matrix parameters")),
+                              br(),
+                              splitLayout(
+                                 numericInput(
+                                    "scoremat_12C",
+                                    tippy(
+                                       "<sup>12</sup>C abundance start",
+                                       placement = "top-end",
+                                       arrow = TRUE,
+                                       allowHTML = TRUE,
+                                       animation = "scale",
+                                       duration = 250,
+                                       theme = "light-border",
+                                       tooltip =
+                                          "<span style='font-size:14px;'>Starting value for <sup>12</sup>C abundance to use for calculating the coarse score matrix. <sup>12</sup>C abundance will be incremented from this value to 1 by the abundance step.</span>"
+                                    ),
+                                    value = 0.987,
+                                    min = 0.9,
+                                    max = 0.999,
+                                    step = 0.001
                                  ),
-                              selected = "plasma"
-                           )
-                        ),
-                        div(
-                           style="display: inline-block;vertical-align:top; width: 150px;"
-                        ),
-                        div(
-                           style="display: inline-block;vertical-align:top; width: 150px;",
-                           numericInput(
-                              "heatmap_scale_coarse_start",
-                              tippy(
-                                 "Coarse heatmap fill range, start",
-                                 placement = "right",
-                                 arrow = TRUE,
-                                 allowHTML = TRUE,
-                                 animation = "scale",
-                                 duration = 250,
-                                 theme = "light",
-                                 tooltip =
-                                    "<span style='font-size:14px;'>xxx</span>"
+                                 numericInput(
+                                    "scoremat_14N",
+                                    tippy(
+                                       "<sup>14</sup>N abundance start",
+                                       placement = "top-end",
+                                       arrow = TRUE,
+                                       allowHTML = TRUE,
+                                       animation = "scale",
+                                       duration = 250,
+                                       theme = "light-border",
+                                       tooltip =
+                                          "<span style='font-size:14px;'>Starting value for <sup>14</sup>N abundance to use for calculating the coarse score matrix. <sup>14</sup>N abundance will be incremented from this value to 1 by the abundance step.</span>"
+                                    ),
+                                    value = 0.994,
+                                    min = 0.9,
+                                    max = 0.999,
+                                    step = 0.001
+                                 )
                               ),
-                              value = 0,
-                              min = 0,
-                              max = 1,
-                              step = 0.01
-                           )
-                        ),
-                        div(
-                           style="display: inline-block;vertical-align:top; width: 150px;",
-                           numericInput(
-                              "heatmap_scale_coarse_end",
-                              tippy(
-                                 "Coarse heatmap fill range, end",
-                                 placement = "right",
-                                 arrow = TRUE,
-                                 allowHTML = TRUE,
-                                 animation = "scale",
-                                 duration = 250,
-                                 theme = "light",
-                                 tooltip =
-                                    "<span style='font-size:14px;'>xxx</span>"
+                              splitLayout(
+                                 numericInput(
+                                    "scoremat_binSize",
+                                    tippy(
+                                       "Bin size",
+                                       placement = "top-end",
+                                       arrow = TRUE,
+                                       allowHTML = TRUE,
+                                       animation = "scale",
+                                       duration = 250,
+                                       theme = "light-border",
+                                       tooltip =
+                                          "<span style='font-size:14px;'>Prior to comparing observed and theoretical spectra, spectra are binned using this bin size value. See MSnbase documentation for more information.</span>"
+                                    ),
+                                    value = 0.05,
+                                    min = 0.01,
+                                    max = 0.1,
+                                    step = 0.01
+                                 ),
+                                 numericInput(
+                                    "scoremat_resolvingPower",
+                                    tippy(
+                                       "Resolving power",
+                                       placement = "top-end",
+                                       arrow = TRUE,
+                                       allowHTML = TRUE,
+                                       animation = "scale",
+                                       duration = 250,
+                                       theme = "light-border",
+                                       tooltip =
+                                          "<span style='font-size:14px;'>Resolving power to be used in generating theoretical isotopic distributions. See enviPat::envelope documentation for more information.</span>"
+                                    ),
+                                    value = 300000,
+                                    min = 1000,
+                                    max = 1000000,
+                                    step = 1000
+                                 )
                               ),
-                              value = 1,
-                              min = 0.01,
-                              max = 1,
-                              step = 0.01
-                           )
-                        ),
-                        div(
-                           style="display: inline-block;vertical-align:top; width: 150px;",
-                           numericInput(
-                              "heatmap_scale_fine_start",
-                              tippy(
-                                 "Fine heatmap fill range, start",
-                                 placement = "right",
-                                 arrow = TRUE,
-                                 allowHTML = TRUE,
-                                 animation = "scale",
-                                 duration = 250,
-                                 theme = "light",
-                                 tooltip =
-                                    "<span style='font-size:14px;'>xxx</span>"
+                              div(
+                                 style="display: inline-block;vertical-align:top; width: 150px;",
+                                 selectInput(
+                                    "scoremat_compfunc",
+                                    tippy(
+                                       "Spectrum comparison function",
+                                       placement = "right",
+                                       arrow = TRUE,
+                                       allowHTML = TRUE,
+                                       animation = "scale",
+                                       duration = 250,
+                                       theme = "light-border",
+                                       tooltip =
+                                          "<span style='font-size:14px;'>Function to be used for comparing observed and theoretical isotopic envelopes.</span>"
+                                    ),
+                                    choices =
+                                       list(
+                                          "Cosine similarity" = "dotproduct",
+                                          "Cor" = "cor",
+                                          "ScoreMFA" = "scoremfa",
+                                          "ScoreMFA (C++)" = "scoremfacpp"
+                                       ),
+                                    selected = "Cosine similarity"
+                                 )
                               ),
-                              value = 0,
-                              min = 0,
-                              max = 1,
-                              step = 0.001
-                           )
-                        ),
-                        div(
-                           style="display: inline-block;vertical-align:top; width: 150px;",
-                           numericInput(
-                              "heatmap_scale_fine_end",
-                              tippy(
-                                 "Fine heatmap fill range, end",
-                                 placement = "right",
-                                 arrow = TRUE,
-                                 allowHTML = TRUE,
-                                 animation = "scale",
-                                 duration = 250,
-                                 theme = "light",
-                                 tooltip =
-                                    "<span style='font-size:14px;'>xxx</span>"
+                              br()
+                           ),
+
+                           bsCollapsePanel(
+
+                              h5(strong("Heatmap parameters")),
+                              br(),
+                              div(
+                                 style="display: inline-block;vertical-align:top; width: 125px;",
+                                 selectInput(
+                                    "heatmap_fill",
+                                    tippy(
+                                       "Heatmap fill",
+                                       placement = "right",
+                                       arrow = TRUE,
+                                       allowHTML = TRUE,
+                                       animation = "scale",
+                                       duration = 250,
+                                       theme = "light-border",
+                                       tooltip =
+                                          "<span style='font-size:14px;'>Color palette to use for score matrix heatmap. All palettes are from the viridis R package and are accessible to colorblind readers.</span>"
+                                    ),
+                                    choices =
+                                       c(
+                                          "magma",
+                                          "inferno",
+                                          "plasma",
+                                          "viridis",
+                                          "cividis"
+                                       ),
+                                    selected = "plasma"
+                                 )
                               ),
-                              value = 1,
-                              min = 0.001,
-                              max = 1,
-                              step = 0.001
+                              div(
+                                 style="display: inline-block;vertical-align:top; width: 125px;"
+                              ),
+                              div(
+                                 style="display: inline-block;vertical-align:top; width: 125px;",
+                                 numericInput(
+                                    "heatmap_scale_coarse_start",
+                                    tippy(
+                                       "Coarse heatmap fill range, start",
+                                       placement = "right",
+                                       arrow = TRUE,
+                                       allowHTML = TRUE,
+                                       animation = "scale",
+                                       duration = 250,
+                                       theme = "light-border",
+                                       tooltip =
+                                          "<span style='font-size:14px;'>xxx</span>"
+                                    ),
+                                    value = 0,
+                                    min = 0,
+                                    max = 1,
+                                    step = 0.01
+                                 )
+                              ),
+                              div(
+                                 style="display: inline-block;vertical-align:top; width: 125px;",
+                                 numericInput(
+                                    "heatmap_scale_coarse_end",
+                                    tippy(
+                                       "Coarse heatmap fill range, end",
+                                       placement = "right",
+                                       arrow = TRUE,
+                                       allowHTML = TRUE,
+                                       animation = "scale",
+                                       duration = 250,
+                                       theme = "light-border",
+                                       tooltip =
+                                          "<span style='font-size:14px;'>xxx</span>"
+                                    ),
+                                    value = 1,
+                                    min = 0.01,
+                                    max = 1,
+                                    step = 0.01
+                                 )
+                              ),
+                              div(
+                                 style="display: inline-block;vertical-align:top; width: 125px;",
+                                 numericInput(
+                                    "heatmap_scale_fine_start",
+                                    tippy(
+                                       "Fine heatmap fill range, start",
+                                       placement = "right",
+                                       arrow = TRUE,
+                                       allowHTML = TRUE,
+                                       animation = "scale",
+                                       duration = 250,
+                                       theme = "light-border",
+                                       tooltip =
+                                          "<span style='font-size:14px;'>xxx</span>"
+                                    ),
+                                    value = 0,
+                                    min = 0,
+                                    max = 1,
+                                    step = 0.001
+                                 )
+                              ),
+                              div(
+                                 style="display: inline-block;vertical-align:top; width: 125px;",
+                                 numericInput(
+                                    "heatmap_scale_fine_end",
+                                    tippy(
+                                       "Fine heatmap fill range, end",
+                                       placement = "right",
+                                       arrow = TRUE,
+                                       allowHTML = TRUE,
+                                       animation = "scale",
+                                       duration = 250,
+                                       theme = "light-border",
+                                       tooltip =
+                                          "<span style='font-size:14px;'>xxx</span>"
+                                    ),
+                                    value = 1,
+                                    min = 0.001,
+                                    max = 1,
+                                    step = 0.001
+                                 )
+                              ),
+                              br()
                            )
                         )
                      )
@@ -455,3 +455,4 @@ shinyUI(
       )
    )
 )
+

@@ -1,10 +1,27 @@
 #' make_spectrum_combined
 #'
-#' @param score_matrix
+#' @description
+#' Used to create a combined spectrum showing an experimental spectrum and peaks
+#' picked from a theoretical spectrum generated using a score matrix, sequence,
+#' optional PTM formula, charge, and resolving power.
+#'
+#' @param mz A numeric vector containing m/z values for an experimental spectrum.
+#' @param intensity A numeric vector containing intensity values for an experimental spectrum.
+#' @param SNR Signal-to-noise cutoff to use for peak picking. See ?MSnbase::pickPeaks.
+#' @param method Method to use for peak picking. See `?MSnbase::pickPeaks`.
+#' @param refineMz Method for m/z refinement for peak picking. See ?MSnbase::pickPeaks.
+#' @param k Number of neighboring signals to use for m/z refinement if refineMz = "kNeighbors". See ?MSnbase::pickPeaks.
+#' @param score_matrix A matrix containing 12C and 14N abundances.
+#' @param sequence Sequence of the protein represented by the m/z and intensity vectors.
+#' @param PTMformula Chemical formula of PTMs of the proteoform represented by the m/z and intensity vectors. Formulas for all PTMs should be combined.
+#' @param charge Charge state of the proteoform represented by the m/z and intensity vectors.
+#' @param resolvingPower Resolving power to be used for generating the initial theoretical spectrum. This parameter does not need to match the resolving power of the experimental spectrum.
 #'
 #' @return
+#' @export
+#' @importFrom magrittr %>%
+#' @import MSnbase
 #'
-#' @examples
 
 make_spectrum_combined <-
    function(
@@ -16,6 +33,7 @@ make_spectrum_combined <-
       k = 2,
       score_matrix = NULL,
       sequence = NULL,
+      PTMformula = "C0",
       charge = NULL,
       resolvingPower = 300000
    ) {
@@ -92,6 +110,13 @@ make_spectrum_combined <-
             paste0("H", charge)
          )
 
+
+      # Add PTM chem form
+
+      chemform <-
+         enviPat::mergeform(chemform, PTMformula)
+
+
       # Remove C0|H0|N0|O0|P0|S0 from formula to prevent errors
 
       if (
@@ -100,7 +125,6 @@ make_spectrum_combined <-
          chemform <-
             stringr::str_remove_all(chemform, "C0|H0|N0|O0|P0|S0")
       }
-
 
       # Generate theoretical isotopic distribution ------------------------------
 

@@ -16,7 +16,21 @@ make_spectrum_peakpick(
 )
 }
 \arguments{
-\item{binSize}{}
+\item{MSspectrum}{An MSnbase Spectrum1 object.}
+
+\item{mz}{A numeric vector containing m/z values for a spectrum.}
+
+\item{intensity}{A numeric vector containing intensity values for a spectrum.}
+
+\item{SNR}{Signal-to-noise cutoff to use for peak picking. See ?MSnbase::pickPeaks.}
+
+\item{method}{Method to use for peak picking. See ?MSnbase::pickPeaks.}
+
+\item{refineMz}{Method for m/z refinement for peak picking. See ?MSnbase::pickPeaks.}
+
+\item{k}{Number of neighboring signals to use for m/z refinement if refineMz = "kNeighbors". See ?MSnbase::pickPeaks.}
+
+\item{binSize}{Bin size to use for peak binning prior to comparing spectra. See ?MSnbase::bin.}
 }
 \value{
 

@@ -17,22 +17,8 @@ shinyServer(
       # Hide panels which are only shown conditionally
 
 
-
       # Disable buttons which are selectively enabled later
 
-
-
-      # Establish params to use for shinyFiles input (local only)
-      # NO LONGER NEEDED, SHINYFILES NOT USED
-
-      # volumes <- c(Home = fs::path_home(), "R Installation" = R.home(), getVolumes()())
-
-      # shinyFileChoose(
-      #    input = input,
-      #    "fileUpload",
-      #    session = session,
-      #    roots = volumes
-      # )
 
       # Reactives ---------------------------------------------------------------
 
@@ -156,35 +142,6 @@ shinyServer(
 
             }
          )
-
-      # score_mat_reac <-
-      #    reactive(
-      #       {
-      #          progressr::withProgressShiny(
-      #             score_matrix_out <-
-      #                calculate_score_matrix(
-      #                   mz = dplyr::pull(peaklist_reactive(), 1),
-      #                   intensity = dplyr::pull(peaklist_reactive(), 2),
-      #                   sequence = trimws(input$scoremat_sequence),
-      #                   charge = input$scoremat_charge,
-      #                   start12C = input$scoremat_12C,
-      #                   start14N = input$scoremat_14N,
-      #                   abundStep =
-      #                      as.double(input$scoremat_abundStep),
-      #                   SNR = input$peakpick_SNR,
-      #                   method = "MAD",
-      #                   refineMz = "kNeighbors",
-      #                   k = input$peakpick_k,
-      #                   compFunc = input$scoremat_compfunc,
-      #                   binSize = input$scoremat_binSize,
-      #                   resolvingPower = input$scoremat_resolvingPower
-      #                )
-      #          )
-      #
-      #          score_matrix_out
-      #       }
-      #    )
-
 
       # Listeners ---------------------------------------------------------------
 
@@ -318,6 +275,7 @@ shinyServer(
                      mz = dplyr::pull(peaklist_reactive(), 1),
                      intensity = dplyr::pull(peaklist_reactive(), 2),
                      sequence = trimws(input$scoremat_sequence),
+                     PTMformula = input$scoremat_PTM,
                      charge = input$scoremat_charge,
                      start12C = input$scoremat_12C,
                      start14N = input$scoremat_14N,
@@ -423,10 +381,10 @@ shinyServer(
 
             # Plot download handlers -------------------------------------------------------
 
-            output$downloadPDF <-
+            output$downloadPDFcoarse <-
                downloadHandler(
                   filename = glue::glue(
-                     "{format(Sys.time(), '%Y%m%d_%H%M%S')}_abundance_plot.pdf"
+                     "{format(Sys.time(), '%Y%m%d_%H%M%S')}_abundance_plot_coarse.pdf"
                   ),
                   content = function(file) {
                      cairo_pdf(
@@ -437,14 +395,42 @@ shinyServer(
                      )
                      print(
                         generate_score_heatmap(
-                           score_matrix = score_matrix_out,
+                           score_matrix = score_matrix_out[[1]],
                            fillOption = input$heatmap_fill,
                            scaleFillLimits =
                               c(
-                                 0,
-                                 max(score_matrix_out)
+                                 input$heatmap_scale_coarse_start,
+                                 input$heatmap_scale_coarse_end
                               ),
-                           compFunc = input$scoremat_compfunc
+                           compFunc = isolate(input$scoremat_compfunc)
+                        )
+                     )
+                     dev.off()
+                  }
+               )
+
+            output$downloadPDFfine <-
+               downloadHandler(
+                  filename = glue::glue(
+                     "{format(Sys.time(), '%Y%m%d_%H%M%S')}_abundance_plot_fine.pdf"
+                  ),
+                  content = function(file) {
+                     cairo_pdf(
+                        filename = file,
+                        width = 8,
+                        height = 5,
+                        bg = "transparent"
+                     )
+                     print(
+                        generate_score_heatmap(
+                           score_matrix = score_matrix_out[[2]],
+                           fillOption = input$heatmap_fill,
+                           scaleFillLimits =
+                              c(
+                                 input$heatmap_scale_fine_start,
+                                 input$heatmap_scale_fine_end
+                              ),
+                           compFunc = isolate(input$scoremat_compfunc)
                         )
                      )
                      dev.off()
@@ -467,14 +453,14 @@ shinyServer(
                      )
                      print(
                         generate_score_heatmap(
-                           score_matrix = score_matrix_out,
+                           score_matrix = score_matrix_out[[2]],
                            fillOption = input$heatmap_fill,
                            scaleFillLimits =
                               c(
-                                 0,
-                                 max(score_matrix_out)
+                                 input$heatmap_scale_fine_start,
+                                 input$heatmap_scale_fine_end
                               ),
-                           compFunc = input$scoremat_compfunc
+                           compFunc = isolate(input$scoremat_compfunc)
                         )
                      )
                      dev.off()

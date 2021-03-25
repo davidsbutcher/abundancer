@@ -7,7 +7,7 @@
 get_optimal_abundances(score_matrix)
 }
 \arguments{
-\item{score_matrix}{}
+\item{score_matrix}{A matrix containing 12C and 14N abundances.}
 }
 \value{
 

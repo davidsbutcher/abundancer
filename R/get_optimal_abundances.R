@@ -1,11 +1,10 @@
 #' get_optimal_abundances
 #'
-#' @param score_matrix
+#' @param score_matrix A matrix containing 12C and 14N abundances.
 #'
 #' @return
 #' @export
 #'
-#' @examples
 
 get_optimal_abundances <-
    function(

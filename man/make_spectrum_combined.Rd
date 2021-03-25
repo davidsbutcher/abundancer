@@ -13,16 +13,39 @@ make_spectrum_combined(
   k = 2,
   score_matrix = NULL,
   sequence = NULL,
+  PTMformula = "C0",
   charge = NULL,
   resolvingPower = 3e+05
 )
 }
 \arguments{
-\item{score_matrix}{}
+\item{mz}{A numeric vector containing m/z values for an experimental spectrum.}
+
+\item{intensity}{A numeric vector containing intensity values for an experimental spectrum.}
+
+\item{SNR}{Signal-to-noise cutoff to use for peak picking. See ?MSnbase::pickPeaks.}
+
+\item{method}{Method to use for peak picking. See `?MSnbase::pickPeaks`.}
+
+\item{refineMz}{Method for m/z refinement for peak picking. See ?MSnbase::pickPeaks.}
+
+\item{k}{Number of neighboring signals to use for m/z refinement if refineMz = "kNeighbors". See ?MSnbase::pickPeaks.}
+
+\item{score_matrix}{A matrix containing 12C and 14N abundances.}
+
+\item{sequence}{Sequence of the protein represented by the m/z and intensity vectors.}
+
+\item{PTMformula}{Chemical formula of PTMs of the proteoform represented by the m/z and intensity vectors. Formulas for all PTMs should be combined.}
+
+\item{charge}{Charge state of the proteoform represented by the m/z and intensity vectors.}
+
+\item{resolvingPower}{Resolving power to be used for generating the initial theoretical spectrum. This parameter does not need to match the resolving power of the experimental spectrum.}
 }
 \value{
 
 }
 \description{
-make_spectrum_combined
+Used to create a combined spectrum showing an experimental spectrum and peaks
+picked from a theoretical spectrum generated using a score matrix, sequence,
+optional PTM formula, charge, and resolving power.
 }

@@ -1,23 +1,29 @@
 #' calculate_score_matrix_dual
 #'
-#' @param MSspectrum
-#' @param mz
-#' @param intensity
-#' @param sequence
-#' @param charge
-#' @param start12C
-#' @param start14N
-#' @param SNR
-#' @param resolvingPower
-#' @param compFunc
-#' @param binSize
+#' @param MSspectrum An MSnbase Spectrum1 object.
+#' @param mz A numeric vector containing m/z values for a spectrum.
+#' @param intensity A numeric vector containing intensity values for a spectrum.
+#' @param sequence Sequence of the protein represented by the m/z and intensity vectors.
+#' @param PTMformula Chemical formula of PTMs of the proteoform represented by the m/z and intensity vectors. Formulas for all PTMs should be combined.
+#' @param charge Charge state of the proteoform represented by the m/z and intensity vectors.
+#' @param start12C Initial abundance of 12C to use for calculating the score matrix. Should be lower than the expected value.
+#' @param start14N Initial abundance of 14N to use for calculating the score matrix. Should be lower than the expected value.
+#' @param abundStepCoarse Abundance step to use for the coarse score matrix. Must be larger than abundStepFine.
+#' @param abundStepFine Abundance step to use for the fine score matrix. Must be smaller than abundStepCoarse.
+#' @param SNR Signal-to-noise cutoff to use for peak picking. See ?MSnbase::pickPeaks.
+#' @param method Method to use for peak picking. See ?MSnbase::pickPeaks.
+#' @param refineMz Method for m/z refinement for peak picking. See ?MSnbase::pickPeaks.
+#' @param k Number of neighboring signals to use for m/z refinement if refineMz = "kNeighbors". See ?MSnbase::pickPeaks.
+#' @param binSize Bin size to use for peak binning prior to comparing spectra. See ?MSnbase::bin.
+#' @param resolvingPower Resolving power to be used for generating the initial theoretical spectrum. This parameter does not need to match the resolving power of the experimental spectrum.
+#' @param compFunc Function to use for comparison of experimental and theoretical spectra. Acceptable values are "dotproduct", "scoremfa", and "scoremfacpp".
 #'
 #' @return
 #' @export
 #' @importFrom magrittr %>%
 #' @import MSnbase
+#' @useDynLib abundancer
 #'
-#' @examples
 
 calculate_score_matrix_dual <-
    function(
@@ -25,10 +31,13 @@ calculate_score_matrix_dual <-
       mz = NULL,
       intensity = NULL,
       sequence = NULL,
+      PTMformula = "C0",
       charge = 1,
-      start12C = 0.989,
-      start14N = 0.995,
-      SNR = 10,
+      start12C = 0.987,
+      start14N = 0.994,
+      abundStepCoarse = 0.001,
+      abundStepFine = 0.0001,
+      SNR = 25,
       method = "MAD",
       refineMz = "kNeighbors",
       k = 2,
@@ -37,7 +46,7 @@ calculate_score_matrix_dual <-
       binSize = 0.05
    ) {
 
-      # Assertions ---------
+      # Assertions --------------------------------------
 
       if (!is.null(MSspectrum)) {
 
@@ -96,23 +105,13 @@ calculate_score_matrix_dual <-
          msg = "start14N is not in the range 0 to 1"
       )
 
-      # assertthat::assert_that(
-      #    assertthat::is.number(abundStep),
-      #    msg = "abundStep is not a length 1 numeric vector"
-      # )
-
-      # assertthat::assert_that(
-      #    assertthat::is.number(isoAbundCutoff),
-      #    msg = "isoAbundCutoff is not a length 1 numeric vector"
-      # )
-
       assertthat::assert_that(
          assertthat::is.number(SNR),
          msg = "SNR is not a length 1 numeric vector"
       )
 
       assertthat::assert_that(
-         compFunc == "dotproduct" | compFunc == "cor" | compFunc == "scoremfa"
+         compFunc == "dotproduct" | compFunc == "cor" | compFunc == "scoremfa" | compFunc == "scoremfacpp"
       )
 
       assertthat::assert_that(
@@ -120,13 +119,7 @@ calculate_score_matrix_dual <-
          msg = "binSize is not a length 1 numeric vector"
       )
 
-
-
       # Initialize parameters ---------------------------------------------------
-
-      # Establish abundance steps for the coarse and fine matrices
-
-      abundStepCoarse <- 0.001
 
       # Get isotope indices -----------------------------------------------------
 
@@ -200,6 +193,13 @@ calculate_score_matrix_dual <-
          enviPat::mergeform(
             paste0("H", charge)
          )
+
+
+      # Add PTM chem form
+
+      chemform <-
+         enviPat::mergeform(chemform, PTMformula)
+
 
       # Remove C0|H0|N0|O0|P0|S0 from formula to prevent errors
 
@@ -288,7 +288,7 @@ calculate_score_matrix_dual <-
                   k = k
                )
 
-            if (compFunc == "dotproduct") {
+            if (compFunc == "dotproduct" | compFunc == "cor") {
 
                compSpec_temp <-
                   MSnbase::compareSpectra(
@@ -335,6 +335,41 @@ calculate_score_matrix_dual <-
 
                iso_matrix_coarse[j,i] <- compSpec_temp
 
+            } else if (compFunc == "scoremfacpp") {
+
+               compSpec_pared <-
+                  pare_spectra(
+                     peaks_exp_picked,
+                     peaks_IsoPat_picked
+                  )
+
+               scaling_factor <-
+                  max(
+                     MSnbase::intensity(compSpec_pared[[1]])
+                  )/
+                  max(
+                     MSnbase::intensity(compSpec_pared[[2]])
+                  )
+
+               compSpec_pared[[2]] <-
+                  new(
+                     "Spectrum1",
+                     mz = MSnbase::mz(compSpec_pared[[2]]),
+                     intensity = MSnbase::intensity(compSpec_pared[[2]]) * scaling_factor,
+                     centroided = TRUE
+                  )
+
+               compSpec_temp <-
+                  ScoreMFA_cpp(
+                     vexp_mz = MSnbase::mz(compSpec_pared[[1]]),
+                     vtheo_mz = MSnbase::mz(compSpec_pared[[2]]),
+                     vrp = rep(resolvingPower, length(MSnbase::mz(compSpec_pared[[1]]))),
+                     vexp_sn = MSnbase::intensity(compSpec_pared[[1]]),
+                     vtheo_sn = MSnbase::intensity(compSpec_pared[[2]])
+                  )
+
+               iso_matrix_coarse[j,i] <- compSpec_temp
+
             }
 
          }
@@ -348,8 +383,6 @@ calculate_score_matrix_dual <-
 
 
       # Get/set parameters for fine matrix ------------------------------------------
-
-      abundStepFine <- 0.0001
 
       optimal_abund <-
          get_optimal_abundances(iso_matrix_coarse)
@@ -453,7 +486,7 @@ calculate_score_matrix_dual <-
                   k = k
                )
 
-            if (compFunc == "dotproduct") {
+            if (compFunc == "dotproduct" | compFunc == "cor") {
 
                compSpec_temp <-
                   MSnbase::compareSpectra(
@@ -500,7 +533,43 @@ calculate_score_matrix_dual <-
 
                iso_matrix_fine[j,i] <- compSpec_temp
 
+            } else if (compFunc == "scoremfacpp") {
+
+               compSpec_pared <-
+                  pare_spectra(
+                     peaks_exp_picked,
+                     peaks_IsoPat_picked
+                  )
+
+               scaling_factor <-
+                  max(
+                     MSnbase::intensity(compSpec_pared[[1]])
+                  )/
+                  max(
+                     MSnbase::intensity(compSpec_pared[[2]])
+                  )
+
+               compSpec_pared[[2]] <-
+                  new(
+                     "Spectrum1",
+                     mz = MSnbase::mz(compSpec_pared[[2]]),
+                     intensity = MSnbase::intensity(compSpec_pared[[2]]) * scaling_factor,
+                     centroided = TRUE
+                  )
+
+               compSpec_temp <-
+                  ScoreMFA_cpp(
+                     vexp_mz = MSnbase::mz(compSpec_pared[[1]]),
+                     vtheo_mz = MSnbase::mz(compSpec_pared[[2]]),
+                     vrp = rep(resolvingPower, length(MSnbase::mz(compSpec_pared[[1]]))),
+                     vexp_sn = MSnbase::intensity(compSpec_pared[[1]]),
+                     vtheo_sn = MSnbase::intensity(compSpec_pared[[2]])
+                  )
+
+               iso_matrix_fine[j,i] <- compSpec_temp
+
             }
+
 
          }
 

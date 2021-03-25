@@ -225,3 +225,62 @@ dotproduct <- function(x, y) {
 
 ceiling_dec <- function(x, digits=1) round(x + 5*10^(-digits-1), digits)
 
+
+#' get_array_max_names
+#'
+#' @param array
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#'
+
+get_array_max_names <-
+   function(
+      array
+   ) {
+
+      # Replace all NA values with 0
+
+      array[is.na(array)] <- 0
+
+      dim_names <-
+         dimnames(array)
+
+      # WARNING - IF MULTIPLE VALUES HAVE THE SAME "MAX" SCORE,
+      # the top row is arbitrarily chosen. This is a problem!
+
+      max_indices <-
+         tibble::as_tibble(which(array == max(array), arr.ind = T)) %>%
+         dplyr::slice(1) %>%
+         as.list()
+
+      # max_indices <-
+      #    as.list(which(array == max(array), arr.ind = T)) %>%
+      #    purrr::map(
+      #       magrittr::extract,
+      #       1
+      #    )
+
+      out <-
+         purrr::map2(
+            dim_names,
+            max_indices[1:length(dim_names)], # To account for weird edge cases where length(max_indices) >> length(dim_names)
+            ~as.double(.x[[.y]])
+         )
+
+      unlist(out)
+
+   }
+
+
+calculate_mma_ppm <-
+   function(
+      obs_mass,
+      theo_mass
+   ) {
+
+      ((obs_mass - theo_mass)/theo_mass) * 1E6
+
+   }

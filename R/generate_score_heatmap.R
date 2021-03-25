@@ -1,15 +1,16 @@
 #' generate_score_heatmap
 #'
-#' @param score_matrix
-#' @param fillOption
-#' @param scaleFillValues
-#' @param scaleFillLimits
-#' @param compFunc
+#' @param score_matrix A matrix containing 12C and 14N abundances.
+#' @param fillOption Argument passed to ggplot2::scale_fill_viridis_c. Controls which viridis color scale is used.
+#' @param scaleFillValues Argument passed to ggplot2::scale_fill_viridis_c. Controls positions of colors along the gradient.
+#' @param scaleFillLimits Argument passed to ggplot2::scale_fill_viridis_c. Controls values which are represented by the fill range.
+#' @param compFunc Function used for comparison of experimental and theoretical spectra. This only impacts the legend label. Acceptable values are "dotproduct" and "scoremfa".
 #'
 #' @return
 #' @export
+#' @importFrom magrittr %>%
+#' @import MSnbase
 #'
-#' @examples
 
 generate_score_heatmap <-
    function(
@@ -20,25 +21,15 @@ generate_score_heatmap <-
       compFunc = "dotproduct"
    ) {
 
-      canonical_12c <- 0.9893
-      canonical_14n <- 0.99636
-
-      if (compFunc == "dotproduct") {
-
-         compFunc_translation <-
-            "Cosine\nSimilarity"
-
-      } else if (compFunc == "scoremfa") {
-
-         compFunc_translation <-
-            "ScoreMFA"
-
-      } else {
-
-         compFunc_translation <-
-            "ERROR, CHECK COMPFUNC"
-
-      }
+      compFunc_translation <-
+         switch(
+            compFunc,
+            "dotproduct" = "Cosine\nSimilarity",
+            "cor" = "Cor",
+            "scoremfa" = "Score MFA",
+            "scoremfacpp" = "Score MFA (C++)",
+            "Unknown CompFunc"
+         )
 
       score_matrix_melt <-
          reshape2::melt(score_matrix) %>%
@@ -92,9 +83,9 @@ generate_score_heatmap <-
             limits = scaleFillLimits,
             guide =
                "colourbar",
-               ggplot2::guide_legend(
-                  title = compFunc_translation
-               )
+            ggplot2::guide_legend(
+               title = compFunc_translation
+            )
          ) +
          ggplot2::theme(
             text = ggplot2::element_text(size = 16)

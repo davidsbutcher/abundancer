@@ -1,13 +1,19 @@
 #' make_spectrum_peakpick
 #'
-#' @param mz
-#' @param intensity
-#' @param SNR
-#' @param binSize
+#' @param MSspectrum An MSnbase Spectrum1 object.
+#' @param mz A numeric vector containing m/z values for a spectrum.
+#' @param intensity A numeric vector containing intensity values for a spectrum.
+#' @param SNR Signal-to-noise cutoff to use for peak picking. See ?MSnbase::pickPeaks.
+#' @param method Method to use for peak picking. See ?MSnbase::pickPeaks.
+#' @param refineMz Method for m/z refinement for peak picking. See ?MSnbase::pickPeaks.
+#' @param k Number of neighboring signals to use for m/z refinement if refineMz = "kNeighbors". See ?MSnbase::pickPeaks.
+#' @param binSize Bin size to use for peak binning prior to comparing spectra. See ?MSnbase::bin.
 #'
 #' @return
+#' @export
+#' @importFrom magrittr %>%
+#' @import MSnbase
 #'
-#' @examples
 
 make_spectrum_peakpick <-
    function(

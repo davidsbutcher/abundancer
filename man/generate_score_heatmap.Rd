@@ -13,7 +13,15 @@ generate_score_heatmap(
 )
 }
 \arguments{
-\item{compFunc}{}
+\item{score_matrix}{A matrix containing 12C and 14N abundances.}
+
+\item{fillOption}{Argument passed to ggplot2::scale_fill_viridis_c. Controls which viridis color scale is used.}
+
+\item{scaleFillValues}{Argument passed to ggplot2::scale_fill_viridis_c. Controls positions of colors along the gradient.}
+
+\item{scaleFillLimits}{Argument passed to ggplot2::scale_fill_viridis_c. Controls values which are represented by the fill range.}
+
+\item{compFunc}{Function used for comparison of experimental and theoretical spectra. This only impacts the legend label. Acceptable values are "dotproduct" and "scoremfa".}
 }
 \value{
 
