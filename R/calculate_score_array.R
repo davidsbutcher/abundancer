@@ -312,34 +312,34 @@ calculate_score_array <-
             } else if (compFunc == "scoremfa") {
 
                compSpec_pared <-
-                  pare_spectra(
-                     peaks_exp_picked,
-                     peaks_IsoPat_picked
+                  pare_spectra_closest_match(
+                     peaks_IsoPat_picked,
+                     peaks_exp_picked
                   )
 
                scaling_factor <-
                   max(
-                     MSnbase::intensity(compSpec_pared[[1]])
+                     MSnbase::intensity(compSpec_pared[[2]])
                   )/
                   max(
-                     MSnbase::intensity(compSpec_pared[[2]])
+                     MSnbase::intensity(compSpec_pared[[1]])
                   )
 
-               compSpec_pared[[2]] <-
+               compSpec_pared[[1]] <-
                   new(
                      "Spectrum1",
-                     mz = MSnbase::mz(compSpec_pared[[2]]),
-                     intensity = MSnbase::intensity(compSpec_pared[[2]]) * scaling_factor,
+                     mz = MSnbase::mz(compSpec_pared[[1]]),
+                     intensity = MSnbase::intensity(compSpec_pared[[1]]) * scaling_factor,
                      centroided = TRUE
                   )
 
                compSpec_temp <-
                   ScoreMFA(
-                     vexp_mz = MSnbase::mz(compSpec_pared[[1]]),
-                     vtheo_mz = MSnbase::mz(compSpec_pared[[2]]),
+                     vexp_mz = MSnbase::mz(compSpec_pared[[2]]),
+                     vtheo_mz = MSnbase::mz(compSpec_pared[[1]]),
                      vrp = rep(resolvingPower, length(MSnbase::mz(compSpec_pared[[1]]))),
-                     vexp_sn = MSnbase::intensity(compSpec_pared[[1]]),
-                     vtheo_sn = MSnbase::intensity(compSpec_pared[[2]])
+                     vexp_sn = MSnbase::intensity(compSpec_pared[[2]]),
+                     vtheo_sn = MSnbase::intensity(compSpec_pared[[1]])
                   )
 
                iso_array_coarse_CN[i,j] <- compSpec_temp
@@ -472,34 +472,34 @@ calculate_score_array <-
             } else if (compFunc == "scoremfa") {
 
                compSpec_pared <-
-                  pare_spectra(
-                     peaks_exp_picked,
-                     peaks_IsoPat_picked
+                  pare_spectra_closest_match(
+                     peaks_IsoPat_picked,
+                     peaks_exp_picked
                   )
 
                scaling_factor <-
                   max(
-                     MSnbase::intensity(compSpec_pared[[1]])
+                     MSnbase::intensity(compSpec_pared[[2]])
                   )/
                   max(
-                     MSnbase::intensity(compSpec_pared[[2]])
+                     MSnbase::intensity(compSpec_pared[[1]])
                   )
 
-               compSpec_pared[[2]] <-
+               compSpec_pared[[1]] <-
                   new(
                      "Spectrum1",
-                     mz = MSnbase::mz(compSpec_pared[[2]]),
-                     intensity = MSnbase::intensity(compSpec_pared[[2]]) * scaling_factor,
+                     mz = MSnbase::mz(compSpec_pared[[1]]),
+                     intensity = MSnbase::intensity(compSpec_pared[[1]]) * scaling_factor,
                      centroided = TRUE
                   )
 
                compSpec_temp <-
                   ScoreMFA(
-                     vexp_mz = MSnbase::mz(compSpec_pared[[1]]),
-                     vtheo_mz = MSnbase::mz(compSpec_pared[[2]]),
+                     vexp_mz = MSnbase::mz(compSpec_pared[[2]]),
+                     vtheo_mz = MSnbase::mz(compSpec_pared[[1]]),
                      vrp = rep(resolvingPower, length(MSnbase::mz(compSpec_pared[[1]]))),
-                     vexp_sn = MSnbase::intensity(compSpec_pared[[1]]),
-                     vtheo_sn = MSnbase::intensity(compSpec_pared[[2]])
+                     vexp_sn = MSnbase::intensity(compSpec_pared[[2]]),
+                     vtheo_sn = MSnbase::intensity(compSpec_pared[[1]])
                   )
 
                iso_array_coarse_OS[i,j] <- compSpec_temp
@@ -690,34 +690,34 @@ calculate_score_array <-
                         } else if (compFunc == "scoremfa") {
 
                            compSpec_pared <-
-                              pare_spectra(
-                                 peaks_exp_picked,
-                                 peaks_IsoPat_picked
+                              pare_spectra_closest_match(
+                                 peaks_IsoPat_picked,
+                                 peaks_exp_picked
                               )
 
                            scaling_factor <-
                               max(
-                                 MSnbase::intensity(compSpec_pared[[1]])
+                                 MSnbase::intensity(compSpec_pared[[2]])
                               )/
                               max(
-                                 MSnbase::intensity(compSpec_pared[[2]])
+                                 MSnbase::intensity(compSpec_pared[[1]])
                               )
 
-                           compSpec_pared[[2]] <-
+                           compSpec_pared[[1]] <-
                               new(
                                  "Spectrum1",
-                                 mz = MSnbase::mz(compSpec_pared[[2]]),
-                                 intensity = MSnbase::intensity(compSpec_pared[[2]]) * scaling_factor,
+                                 mz = MSnbase::mz(compSpec_pared[[1]]),
+                                 intensity = MSnbase::intensity(compSpec_pared[[1]]) * scaling_factor,
                                  centroided = TRUE
                               )
 
                            compSpec_temp <-
                               ScoreMFA(
-                                 vexp_mz = MSnbase::mz(compSpec_pared[[1]]),
-                                 vtheo_mz = MSnbase::mz(compSpec_pared[[2]]),
+                                 vexp_mz = MSnbase::mz(compSpec_pared[[2]]),
+                                 vtheo_mz = MSnbase::mz(compSpec_pared[[1]]),
                                  vrp = rep(resolvingPower, length(MSnbase::mz(compSpec_pared[[1]]))),
-                                 vexp_sn = MSnbase::intensity(compSpec_pared[[1]]),
-                                 vtheo_sn = MSnbase::intensity(compSpec_pared[[2]])
+                                 vexp_sn = MSnbase::intensity(compSpec_pared[[2]]),
+                                 vtheo_sn = MSnbase::intensity(compSpec_pared[[1]])
                               )
 
                            iso_array_fine[i,j,k,l,m,n] <- compSpec_temp
