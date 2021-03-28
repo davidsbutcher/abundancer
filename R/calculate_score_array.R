@@ -610,9 +610,19 @@ calculate_score_array <-
 
                      for (n in seq_along(seq_fine[["33S"]])) {
 
-                        if (seq_fine[["32S"]][[l]] + seq_fine[["33S"]][[n]] + seq_fine[["34S"]][[m]] != 1) next()
+                        if (seq_fine[["32S"]][[l]] + seq_fine[["33S"]][[n]] + seq_fine[["34S"]][[m]] != 1) {
 
-                        if (seq_fine[["16O"]][[k]] + seq_fine[["18O"]][[k]] + abund17O != 1) next()
+                           iso_array_fine[i,j,k,l,m,n] <- NA
+                           next()
+
+                        }
+
+                        if (seq_fine[["16O"]][[k]] + seq_fine[["18O"]][[k]] + abund17O != 1) {
+
+                           iso_array_fine[i,j,k,l,m,n] <- NA
+                           next()
+
+                        }
 
                         isotopes$abundance[indices[["12C"]]] <- seq_fine[["12C"]][[i]]
 
