@@ -1,15 +1,21 @@
-ovln <- function(theo_mz, exp_mz, rp){
-   sd <- exp_mz / (6 * rp)
+ovln <- function(theo_mz, exp_mz, rp, rp_mult = 6){
+   sd <- exp_mz / (rp_mult * rp)
    Zn <- -abs(theo_mz - exp_mz) / (2 * sd)
    return(2*pnorm(Zn, mean=0, sd=1))
 }
 
-ovlhn <- function(theo_mz, exp_mz, theo_sn, exp_sn, rp){
+ovlhn <- function(theo_mz, exp_mz, theo_sn, exp_sn, rp, rp_mult = 6){
 
-   if (theo_sn == exp_sn){
-      return(ovln(theo_mz,exp_mz,rp))
+   # Added by DSB to handle bug with missing values in exp_sn
+
+   if (length(theo_sn) != length(exp_sn)) return(0)
+   if (is.na(theo_sn) | is.na(exp_sn)) return(0)
+   if (is.null(theo_sn) | is.null(exp_sn)) return(0)
+
+   if(theo_sn==exp_sn){
+      return(ovln(theo_mz,exp_mz, rp, rp_mult = rp_mult))
    } else {
-      sd <- exp_mz / (6 * rp)
+      sd <- exp_mz / (rp_mult * rp)
 
       mu1t <- theo_mz - trunc(exp_mz)
       mu2t <- exp_mz - trunc(exp_mz)
@@ -40,24 +46,25 @@ ovlhn <- function(theo_mz, exp_mz, theo_sn, exp_sn, rp){
 
 }
 
-ScoreMFA <-
-   function(vexp_mz, vtheo_mz, vrp, vexp_sn, vtheo_sn) {
+ScoreMFA <- function(vexp_mz, vtheo_mz, vrp, vexp_sn, vtheo_sn, rp_mult = 6) {
 
-      vsd <- vexp_mz / (6*vrp)
-      ntheo <- length(vtheo_mz)
-      nexp <- length(vtheo_mz)
-      if(nexp < ntheo){
-         vtheo_mz <- vtheo_mz[1:nexp]
-         vtheo_sn <- vtheo_sn[1:nexp]
-      }
-      vovlhn <- numeric(nexp)
-      for(i in 1:ntheo){
-         vovlhn[i] <- ovlhn(theo_mz=vtheo_mz[i], exp_mz=vexp_mz[i], theo_sn=vtheo_sn[i], exp_sn=vexp_sn[i], rp=vrp[i])
-      }
-      Score <- sum(vtheo_sn*vovlhn)/sum(vtheo_sn)
-      return(Score)
+   if (length(vexp_sn) != length(vtheo_sn)) return(0)
 
+   vsd <- vexp_mz / (rp_mult*vrp)
+   ntheo <- length(vtheo_mz)
+   nexp <- length(vexp_mz)
+   if(nexp < ntheo){
+      vtheo_mz <- vtheo_mz[1:nexp]
+      vtheo_sn <- vtheo_sn[1:nexp]
    }
+   vovlhn <- numeric(nexp)
+   for(i in 1:ntheo){
+      vovlhn[i] <- ovlhn(theo_mz=vtheo_mz[i], exp_mz=vexp_mz[i], theo_sn=vtheo_sn[i], exp_sn=vexp_sn[i], rp=vrp[i], rp_mult = rp_mult)
+   }
+   Score <- sum(vtheo_sn*vovlhn)/sum(vtheo_sn)
+   return(Score)
+
+}
 
 fix_vector_length <-
    function(
@@ -200,6 +207,68 @@ pare_spectra <-
          )
 
       # return new spectra
+
+      return(
+         list(
+            new_spectrum1,
+            new_spectrum2
+         )
+      )
+
+   }
+
+pare_spectra_closest_match <-
+   function(
+      spectrum_theo,
+      spectrum_obs,
+      resPowerMS1 = 300000,
+      isoWinMultiplier = 1
+   ) {
+
+      mz_at_max_theo <-
+         which(MSnbase::intensity(spectrum_theo) == max(MSnbase::intensity(spectrum_theo)))
+
+      mz_at_max_obs <-
+         which(MSnbase::intensity(spectrum_obs) == max(MSnbase::intensity(spectrum_obs)))
+
+      indi_obs <-
+         MALDIquant::match.closest(
+            MSnbase::mz(spectrum_theo),
+            MSnbase::mz(spectrum_obs),
+            tolerance = (MSnbase::mz(spectrum_theo)[mz_at_max_theo]/resPowerMS1)*isoWinMultiplier
+         ) %>%
+         unique() %>%
+         na.exclude()
+
+      indi_theo <-
+         MALDIquant::match.closest(
+            MSnbase::mz(spectrum_obs),
+            MSnbase::mz(spectrum_theo),
+            tolerance = (MSnbase::mz(spectrum_obs)[mz_at_max_obs]/resPowerMS1)*isoWinMultiplier
+         ) %>%
+         unique() %>%
+         na.exclude()
+
+
+      new_spectrum1 <-
+         new(
+            "Spectrum1",
+            mz =
+               MSnbase::mz(spectrum_theo)[indi_theo],
+            intensity =
+               MSnbase::intensity(spectrum_theo)[indi_theo],
+            centroided = TRUE
+         )
+
+      new_spectrum2 <-
+         new(
+            "Spectrum1",
+            mz =
+               MSnbase::mz(spectrum_obs)[indi_obs],
+            intensity =
+               MSnbase::intensity(spectrum_obs)[indi_obs],
+            centroided = TRUE
+         )
 
       return(
          list(

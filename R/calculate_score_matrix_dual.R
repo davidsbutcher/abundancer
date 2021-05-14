@@ -388,22 +388,22 @@ calculate_score_matrix_dual <-
          get_optimal_abundances(iso_matrix_coarse)
 
       start14Nfine <-
-         optimal_abund[[1]] - abundStepCoarse/2
+         optimal_abund[[1]] - abundStepCoarse
 
       # if (start14Nfine == 1) start14Nfine <- 1 - abundStepCoarse
 
       end14Nfine <-
-         optimal_abund[[1]] + abundStepCoarse/2
+         optimal_abund[[1]] + abundStepCoarse
 
       if (end14Nfine > 1) end14Nfine <- 1
 
       start12Cfine <-
-         optimal_abund[[2]] - abundStepCoarse/2
+         optimal_abund[[2]] - abundStepCoarse
 
       # if (start12Cfine == 1) start12Cfine <- 1 - abundStepCoarse
 
       end12Cfine <-
-         optimal_abund[[2]] + abundStepCoarse/2
+         optimal_abund[[2]] + abundStepCoarse
 
       if (end12Cfine > 1) end12Cfine <- 1
 
