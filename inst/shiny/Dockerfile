@@ -3,7 +3,7 @@
 # docker build --tag davidsbutcher/abundancer:test01 --no-cache .
 
 # get shiny plus tidyverse packages image
-FROM rocker/shiny-verse:4.0.3
+FROM rocker/shiny-verse:4.0.5
 
 # install R packages from Bioconductor
 
@@ -18,7 +18,7 @@ RUN R -e "install.packages('devtools', repos='http://cran.rstudio.com/')"
 
 RUN R -e "devtools::install_github('davidsbutcher/abundancer')"
 
-# install R packages from CRAN 
+# install R packages from CRAN
 
 RUN R -e "install.packages('magrittr', repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('assertthat', repos='http://cran.rstudio.com/')"
