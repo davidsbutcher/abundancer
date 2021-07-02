@@ -6,7 +6,7 @@ Authors@R:
     person(given = "David",
            family = "Butcher",
            role = c("aut", "cre"),
-           email = "drdavidbutcher@gmail.com",
+           email = "davidsbutcher@protonmail.com",
            comment = c(ORCID = "0000-0002-1268-4150"))
 Description: Determines isotopic abundances (12C and 14N) for protein mass spectrometric data.
 License: MIT + file LICENSE
