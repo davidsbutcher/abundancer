@@ -279,6 +279,7 @@ shinyServer(
                      charge = input$scoremat_charge,
                      start12C = input$scoremat_12C,
                      start14N = input$scoremat_14N,
+                     abundStepCoarseMult = input$scoremat_coarseMult,
                      SNR = input$peakpick_SNR,
                      method = "MAD",
                      refineMz = "kNeighbors",
@@ -286,7 +287,8 @@ shinyServer(
                      compFunc = input$scoremat_compfunc,
                      binSize = input$scoremat_binSize,
                      resolvingPower = input$scoremat_resolvingPower
-                  )
+                  ),
+               message = "In Progress"
             )
 
             output$output_plot_scoremat1 <-

@@ -277,12 +277,29 @@ shinyUI(
                                     step = 1000
                                  )
                               ),
-                              div(
-                                 style="display: inline-block;vertical-align:top; width: 150px;",
+                              splitLayout(
+                                 numericInput(
+                                    "scoremat_coarseMult",
+                                    tippy(
+                                       "Coarse step mult.",
+                                       placement = "top-end",
+                                       arrow = TRUE,
+                                       allowHTML = TRUE,
+                                       animation = "scale",
+                                       duration = 250,
+                                       theme = "light-border",
+                                       tooltip =
+                                          "<span style='font-size:14px;'>Value by which coarse step is multiplied to determine range for calculating fine matrix.</span>"
+                                    ),
+                                    value = 1,
+                                    min = 1,
+                                    max = 10,
+                                    step = 1
+                                 ),
                                  selectInput(
                                     "scoremat_compfunc",
                                     tippy(
-                                       "Spectrum comparison function",
+                                       "Spec. comp. func.",
                                        placement = "right",
                                        arrow = TRUE,
                                        allowHTML = TRUE,
@@ -290,7 +307,7 @@ shinyUI(
                                        duration = 250,
                                        theme = "light-border",
                                        tooltip =
-                                          "<span style='font-size:14px;'>Function to be used for comparing observed and theoretical isotopic envelopes.</span>"
+                                          "<span style='font-size:14px;'>Sepctrum comparison function to be used for comparing observed and theoretical isotopic envelopes.</span>"
                                     ),
                                     choices =
                                        list(
@@ -302,6 +319,31 @@ shinyUI(
                                     selected = "Cosine similarity"
                                  )
                               ),
+                              # div(
+                              #    style="display: inline-block;vertical-align:top; width: 150px;",
+                              #    selectInput(
+                              #       "scoremat_compfunc",
+                              #       tippy(
+                              #          "Spectrum comparison function",
+                              #          placement = "right",
+                              #          arrow = TRUE,
+                              #          allowHTML = TRUE,
+                              #          animation = "scale",
+                              #          duration = 250,
+                              #          theme = "light-border",
+                              #          tooltip =
+                              #             "<span style='font-size:14px;'>Function to be used for comparing observed and theoretical isotopic envelopes.</span>"
+                              #       ),
+                              #       choices =
+                              #          list(
+                              #             "Cosine similarity" = "dotproduct",
+                              #             "Cor" = "cor",
+                              #             "ScoreMFA" = "scoremfa",
+                              #             "ScoreMFA (C++)" = "scoremfacpp"
+                              #          ),
+                              #       selected = "Cosine similarity"
+                              #    )
+                              # ),
                               br()
                            ),
 

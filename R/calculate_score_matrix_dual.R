@@ -9,6 +9,7 @@
 #' @param start12C Initial abundance of 12C to use for calculating the score matrix. Should be lower than the expected value.
 #' @param start14N Initial abundance of 14N to use for calculating the score matrix. Should be lower than the expected value.
 #' @param abundStepCoarse Abundance step to use for the coarse score matrix. Must be larger than abundStepFine.
+#' @param abundStepCoarseMult Integer multiplied by abundStepCoarse to determine range of values used to calculate fine matrix. Defaults to 1.
 #' @param abundStepFine Abundance step to use for the fine score matrix. Must be smaller than abundStepCoarse.
 #' @param SNR Signal-to-noise cutoff to use for peak picking. See ?MSnbase::pickPeaks.
 #' @param method Method to use for peak picking. See ?MSnbase::pickPeaks.
@@ -36,6 +37,7 @@ calculate_score_matrix_dual <-
       start12C = 0.987,
       start14N = 0.994,
       abundStepCoarse = 0.001,
+      abundStepCoarseMult = 1,
       abundStepFine = 0.0001,
       SNR = 25,
       method = "MAD",
@@ -246,7 +248,6 @@ calculate_score_matrix_dual <-
 
             isotopes$abundance[index_15N] <- 1 - l
 
-
             # Calculate theoretical isotopic distribution for the current set
             # of isotopic abundances (i and j)
 
@@ -388,22 +389,22 @@ calculate_score_matrix_dual <-
          get_optimal_abundances(iso_matrix_coarse)
 
       start14Nfine <-
-         optimal_abund[[1]] - abundStepCoarse
+         optimal_abund[[1]] - abundStepCoarse * abundStepCoarseMult
 
       # if (start14Nfine == 1) start14Nfine <- 1 - abundStepCoarse
 
       end14Nfine <-
-         optimal_abund[[1]] + abundStepCoarse
+         optimal_abund[[1]] + abundStepCoarse * abundStepCoarseMult
 
       if (end14Nfine > 1) end14Nfine <- 1
 
       start12Cfine <-
-         optimal_abund[[2]] - abundStepCoarse
+         optimal_abund[[2]] - abundStepCoarse * abundStepCoarseMult
 
       # if (start12Cfine == 1) start12Cfine <- 1 - abundStepCoarse
 
       end12Cfine <-
-         optimal_abund[[2]] + abundStepCoarse
+         optimal_abund[[2]] + abundStepCoarse * abundStepCoarseMult
 
       if (end12Cfine > 1) end12Cfine <- 1
 
