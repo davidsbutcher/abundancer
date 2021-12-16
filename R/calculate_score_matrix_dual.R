@@ -304,9 +304,11 @@ calculate_score_matrix_dual <-
             } else if (compFunc == "scoremfa") {
 
                compSpec_pared <-
-                  pare_spectra(
+                  pare_spectra_closest_match(
                      peaks_exp_picked,
-                     peaks_IsoPat_picked
+                     peaks_IsoPat_picked,
+                     resPowerMS1 = resolvingPower,
+                     isoWinMultiplier = 1
                   )
 
                scaling_factor <-
@@ -339,9 +341,11 @@ calculate_score_matrix_dual <-
             } else if (compFunc == "scoremfacpp") {
 
                compSpec_pared <-
-                  pare_spectra(
+                  pare_spectra_closest_match(
                      peaks_exp_picked,
-                     peaks_IsoPat_picked
+                     peaks_IsoPat_picked,
+                     resPowerMS1 = resolvingPower,
+                     isoWinMultiplier = 1
                   )
 
                scaling_factor <-
@@ -502,9 +506,11 @@ calculate_score_matrix_dual <-
             } else if (compFunc == "scoremfa") {
 
                compSpec_pared <-
-                  pare_spectra(
+                  pare_spectra_closest_match(
                      peaks_exp_picked,
-                     peaks_IsoPat_picked
+                     peaks_IsoPat_picked,
+                     resPowerMS1 = resolvingPower,
+                     isoWinMultiplier = 1
                   )
 
                scaling_factor <-
@@ -537,9 +543,11 @@ calculate_score_matrix_dual <-
             } else if (compFunc == "scoremfacpp") {
 
                compSpec_pared <-
-                  pare_spectra(
+                  pare_spectra_closest_match(
                      peaks_exp_picked,
-                     peaks_IsoPat_picked
+                     peaks_IsoPat_picked,
+                     resPowerMS1 = resolvingPower,
+                     isoWinMultiplier = 1
                   )
 
                scaling_factor <-
