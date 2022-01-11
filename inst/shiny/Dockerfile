@@ -7,7 +7,7 @@
 # inst/shiny/zip and change the appropriate lines below!!!!!!!!
 
 # get shiny plus tidyverse packages image
-FROM rocker/shiny-verse:4.0.5
+FROM rocker/shiny-verse:4.1.2
 
 # install netCDF, mzR prerequisite
 
@@ -42,7 +42,7 @@ RUN R -e "install.packages('fs', repos='http://cran.rstudio.com/')"
 # install abundancer R package from zip
 
 COPY /zip/ /tmp/
-RUN R -e "install.packages('tmp/abundancer_0.1.0.tar.gz')"
+RUN R -e "install.packages('tmp/abundancer_0.2.0.tar.gz')"
 
 # copy the app to the image
 COPY ui.R /var/abundancer/

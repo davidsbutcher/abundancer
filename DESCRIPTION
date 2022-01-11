@@ -1,7 +1,7 @@
 Package: abundancer
 Type: Package
 Title: Determine Abundances of 12C and 14N from Protein Mass Spectra
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: 
     person(given = "David",
            family = "Butcher",

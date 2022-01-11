@@ -27,7 +27,7 @@ options(shiny.maxRequestSize = 1000*1024^2)
 
 shinyUI(
 
-   fixedPage(
+   fluidPage(
       titlePanel("abundancer"),
       theme = "maglab_theme_old.css",
       # theme = bslib::bs_theme(version = 4),
